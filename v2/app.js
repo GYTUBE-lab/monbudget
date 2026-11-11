@@ -284,7 +284,7 @@ function buildTx(f) {
   if (f.note) t.note = String(f.note).slice(0, 500);
   const pay = f.payment || 'card';
   if (t.type === 'expense' && pay === 'card' && isDeferredAcc(acc)) { t.payment = 'deferred'; t.dueDate = f.dueDate && validDate(f.dueDate) ? f.dueDate : dueDateFor(acc, t.date); }
-  else t.payment = pay;
+  else t.payment = pay === 'cardNow' ? 'card' : pay;
   if (f.planned) t.status = 'planned';
   if (f.budgetMonth && validMonth(f.budgetMonth) && f.budgetMonth !== t.date.slice(0, 7)) t.budgetMonth = f.budgetMonth;
   if (f.splits?.length) {

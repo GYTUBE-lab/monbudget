@@ -179,7 +179,7 @@ const PAGES = {
     if (!accs.length) return h + `<section class="card"><p style="margin:0 0 12px">Aucun de vos comptes n’a de carte à débit différé.</p><p class="small" style="margin:0 0 14px">Si votre carte est débitée une fois par mois, ouvrez le compte concerné et choisissez « Carte : Différée » avec le jour du débit. Vos achats par carte seront alors automatiquement débités ce jour-là.</p><button class="btn full" data-act="page" data-page="accounts">Mes comptes</button></section></main>`;
     for (const a of accs) {
       const pend = pendingDeferred(a.id), byDue = new Map(); pend.forEach(t => byDue.set(t.dueDate, (byDue.get(t.dueDate) || 0) + t.amount));
-      h += `<section class="card hero"><div class="label">À débiter · ${esc(a.name)}</div><div class="big num neg">${money(pend.reduce((s, t) => s + t.amount, 0))}</div>${[...byDue].sort().map(([d, v]) => `<div class="head split"><span>Débit du ${dateFR(d)}</span><span class="b">${money(v)}</span></div>`).join('')}<p class="tiny" style="margin:10px 0 0">Débit automatique le ${a.debitDay} de chaque mois. Rien à saisir : chaque achat « Carte » est ajouté au bon débit. Si vous importez le relevé, la ligne du débit global est reconnue et n’est pas comptée deux fois.</p></section>`;
+      h += `<section class="card hero"><div class="label">À débiter · ${esc(a.name)}</div><div class="big num neg">${money(pend.reduce((s, t) => s + t.amount, 0))}</div>${[...byDue].sort().map(([d, v]) => `<div class="head split"><span>Débit du ${dateFR(d)}</span><span class="b">${money(v)}</span></div>`).join('')}<p class="tiny" style="margin:10px 0 0">Débit automatique le ${a.debitDay} de chaque mois. Rien à saisir : chaque achat « Carte » est ajouté au bon débit. Si vous importez le relevé, la ligne du débit global est reconnue et n’est pas comptée deux fois.<br><b>Un montant déjà débité ?</b> Touchez-le ci-dessous et choisissez « Carte immédiate ».</p></section>`;
       h += `<div class="sec">${pend.length} achat${pend.length > 1 ? 's' : ''} en attente</div><section class="card list">${pend.length ? pend.map(t => txRow(t, true)).join('') : '<p class="empty">Aucun achat en attente.</p>'}</section>`;
     }
     return h + '</main>';
@@ -283,17 +283,18 @@ function txForm(type, opts = {}) {
   type = t ? t.type : type;
   const cat = t?.category || opts.category || '';
   const acc = t?.account || opts.account || defaultAccountId();
-  const pay = t ? (t.payment === 'deferred' ? 'card' : t.payment === 'immediate' ? 'card' : t.payment) : (type === 'income' ? 'transfer' : 'card');
+  const deferredTx = t && isDeferredAcc(accountById(t.account));
+  const pay = t ? (t.payment === 'deferred' ? 'card' : (t.payment === 'card' || t.payment === 'immediate') ? (deferredTx ? 'cardNow' : 'card') : t.payment) : (type === 'income' ? 'transfer' : 'card');
   const date = t?.date || opts.date || today();
-  const payOpts = type === 'income' ? [['transfer', 'Virement'], ['cash', 'Espèces'], ['cheque', 'Chèque']] : [['card', 'Carte'], ['directDebit', 'Prélèvement / virement'], ['cash', 'Espèces']];
-  if (t && !payOpts.some(p => p[0] === pay)) payOpts.push([pay, payLabel(pay)]);
+  const payOptsFor = accId => { const o = type === 'income' ? [['transfer', 'Virement'], ['cash', 'Espèces'], ['cheque', 'Chèque']] : isDeferredAcc(accountById(accId)) ? [['card', 'Carte différée'], ['cardNow', 'Carte immédiate'], ['directDebit', 'Prélèvement / virement'], ['cash', 'Espèces']] : [['card', 'Carte'], ['directDebit', 'Prélèvement / virement'], ['cash', 'Espèces']]; if (t && !o.some(p => p[0] === pay) && pay !== 'cardNow' && pay !== 'card') o.push([pay, payLabel(pay)]); return o; };
+  const payButtons = (accId, sel) => { const o = payOptsFor(accId); if (!o.some(p => p[0] === sel)) sel = sel === 'cardNow' ? 'card' : o[0][0]; return `<div class="opts" id="payBox" style="${o.length === 4 ? 'grid-template-columns:repeat(2,minmax(0,1fr))' : ''}">${o.map(([v, l]) => `<button type="button" class="opt" data-group="pay" data-v="${v}" aria-pressed="${v === sel}">${l}</button>`).join('')}</div>`; };
   const title = isEdit ? (t.treatment === 'transfer' ? 'Virement' : type === 'income' ? 'Revenu' : 'Dépense') : type === 'income' ? 'Nouveau revenu' : 'Nouvelle dépense';
   const body = `${isEdit ? '' : `<div class="seg light" role="group" aria-label="Type" style="margin:0 auto;width:240px"><button type="button" data-act="switch-type" data-v="expense" aria-pressed="${type === 'expense'}">Dépense</button><button type="button" data-act="switch-type" data-v="income" aria-pressed="${type === 'income'}">Revenu</button></div>`}
   <label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant</span><input name="amount" class="amount-in ${type === 'income' ? 'inc' : ''}" inputmode="decimal" autocomplete="off" placeholder="0,00 €" value="${t ? amountInput(t.amount) : opts.amount ? amountInput(opts.amount) : ''}"></label>
   <label class="f">${type === 'income' ? 'De qui / quoi ?' : 'Où / quoi ?'}<input name="label" list="labelsList" autocomplete="off" value="${esc(t?.label || opts.label || '')}" placeholder="${type === 'income' ? 'Ex. Pension, remboursement…' : 'Ex. Intermarché, pharmacie…'}"><datalist id="labelsList">${recentLabels(type).map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
   <input type="hidden" name="category" value="${esc(cat)}"><input type="hidden" name="subcategory" value="${esc(t?.subcategory || opts.subcategory || '')}">
   <fieldset><legend>Catégorie <span id="guessNote" class="tiny" style="font-weight:500;color:var(--pos)"></span></legend><div id="catBox"></div></fieldset>
-  <fieldset><legend>${type === 'income' ? 'Reçu par' : 'Payé avec'}</legend><div class="opts">${payOpts.map(([v, l]) => `<button type="button" class="opt" data-group="pay" data-v="${v}" aria-pressed="${v === pay}">${l}</button>`).join('')}</div></fieldset>
+  <fieldset><legend>${type === 'income' ? 'Reçu par' : 'Payé avec'}</legend>${payButtons(acc, pay)}</fieldset>
   <div id="payInfo"></div>
   <details class="more" ${isEdit || opts.open ? 'open' : ''}><summary><span><span id="whenWhere">${date === today() ? 'Aujourd’hui' : dateFR(date)} · ${esc(accName(acc))}</span> <span class="link">Changer, plus d’options</span></span>${ic('down', 18)}</summary><div>
    <div class="grid2"><label class="f">Date<input type="date" name="date" value="${date}"></label><label class="f">Compte<select name="account">${accOptions(acc)}</select></label></div>
@@ -314,8 +315,10 @@ function txForm(type, opts = {}) {
      ${c?.subs?.length ? `<div class="pills" style="margin-top:10px">${c.subs.map(s => `<button type="button" class="pill s" data-act="pick-sub" data-v="${esc(s)}" aria-pressed="${s === val('subcategory')}">${esc(s)}</button>`).join('')}</div>` : ''}`;
   };
   const drawPay = () => {
-    const a = accountById(val('account') || acc), p = getPressed('pay');
-    $('#payInfo').innerHTML = type === 'expense' && p === 'card' && isDeferredAcc(a) ? `<div class="alert">${ic('card', 20)}<span>Carte différée de <b>${esc(a.name)}</b> : débitée le <b>${dateFR(dueDateFor(a, val('date') || date)).slice(0, 5)}</b> avec les autres achats du mois. Rien d’autre à faire.</span></div>` : '';
+    const a = accountById(val('account') || acc);
+    if (type === 'expense' && $('#payBox').children.length !== payOptsFor(a?.id).length) $('#payBox').outerHTML = payButtons(a?.id, getPressed('pay'));
+    const p = getPressed('pay');
+    $('#payInfo').innerHTML = type === 'expense' && p === 'card' && isDeferredAcc(a) ? `<div class="alert">${ic('card', 20)}<span>Carte différée de <b>${esc(a.name)}</b> : débitée le <b>${dateFR(dueDateFor(a, val('date') || date)).slice(0, 5)}</b> avec les autres achats du mois. Déjà débité ? Choisissez « Carte immédiate ».</span></div>` : type === 'expense' && p === 'cardNow' ? `<div class="alert">${ic('card', 20)}<span>Débité le jour même (${dateFR(val('date') || date).slice(0, 5)}) sur <b>${esc(a?.name || '')}</b>. À utiliser aussi pour un débit global de carte déjà passé dont les achats ne sont pas saisis.</span></div>` : '';
     $('#whenWhere').textContent = (val('date') === today() ? 'Aujourd’hui' : dateFR(val('date'))) + ' · ' + accName(val('account'));
   };
   const drawSplits = () => {
