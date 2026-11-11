@@ -477,3 +477,58 @@ function download(name, content, type) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 load();
+
+/* ---------- Saisie à la voix : « 64 euros 30 Intermarché carte » ---------- */
+const SPOKEN_HINTS = [
+  [/\b(courses?|supermarche|hypermarche|epicerie)\b/, 'Alimentation', 'Supermarché'], [/\b(boulangerie|pain|baguette)\b/, 'Alimentation', 'Boulangerie'], [/\b(restaurant|resto|brasserie|pizzeria)\b/, 'Alimentation', 'Restaurant'],
+  [/\b(marche|primeur|legumes|fruits)\b/, 'Alimentation', 'Marché / primeur'], [/\b(essence|carburant|gasoil|gazole|diesel|plein)\b/, 'Voiture & transport', 'Carburant'], [/\b(peage|parking|stationnement)\b/, 'Voiture & transport', 'Péage / parking'],
+  [/\b(garage|vidange|pneus?)\b/, 'Voiture & transport', 'Entretien / réparations'], [/\b(pharmacie|medicaments?)\b/, 'Santé et mutuelle', 'Pharmacie'], [/\b(medecin|docteur|consultation)\b/, 'Santé et mutuelle', 'Médecin'],
+  [/\b(dentiste)\b/, 'Santé et mutuelle', 'Dentiste'], [/\b(coiffeur|coiffure)\b/, 'Hygiène et soins', 'Coiffeur'], [/\b(cinema|theatre|concert|musee)\b/, 'Loisirs et passions', 'Sorties'],
+  [/\b(bricolage|quincaillerie)\b/, 'Entretien de la maison', 'Bricolage'], [/\b(jardinerie|jardin)\b/, 'Entretien de la maison', 'Jardin'], [/\b(vetements?|chaussures?)\b/, 'Achats', 'Vêtements'],
+  [/\b(veterinaire)\b/, 'Animaux', 'Vétérinaire'], [/\b(croquettes)\b/, 'Animaux', 'Nourriture'], [/\b(cadeau)\b/, 'Cadeaux et dons', 'Cadeaux'],
+  [/\b(electricite|edf)\b/, 'Énergie et eau', 'Électricité'], [/\b(gaz)\b/, 'Énergie et eau', 'Gaz'], [/\b(pension|retraite)\b/, 'Pension', ''], [/\b(salaire|paie)\b/, 'Salaire', ''],
+  [/\b(airbnb)\b/, 'Bungalow · Revenus', 'Airbnb'], [/\b(booking)\b/, 'Bungalow · Revenus', 'Booking'], [/\b(plantes?|boutures?)\b/, 'Ventes diverses', 'Plantes'], [/\b(vide.grenier|brocante)\b/, 'Ventes diverses', 'Vide-grenier / brocante']
+];
+const MONTH_WORDS = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
+const shiftDate = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
+function parseSpoken(text, type) {
+  const raw = String(text || '').trim(); let s = ' ' + norm(raw).replace(/€/g, ' euros ').replace(/\s+/g, ' ') + ' ';
+  const r = { text: raw };
+  /* Type */
+  if (/\b(recu|revenu|rentree|rembourse(ment)?|vendu|vente|pension|salaire|retraite|airbnb|booking|loyer recu)\b/.test(s) && !/\b(depense|achete|paye)\b/.test(s)) r.type = 'income';
+  else if (/\b(depense|achat|achete|paye)\b/.test(s)) r.type = 'expense';
+  /* Date */
+  const t0 = today();
+  if (/\bavant[ -]hier\b/.test(s)) { r.date = shiftDate(t0, -2); s = s.replace(/\bavant[ -]hier\b/, ' '); }
+  else if (/\bhier\b/.test(s)) { r.date = shiftDate(t0, -1); s = s.replace(/\bhier\b/, ' '); }
+  else if (/\baujourd ?hui\b/.test(s)) { r.date = t0; s = s.replace(/\baujourd ?hui\b/, ' '); }
+  else {
+    const m = s.match(/\ble (\d{1,2}|1er|premier)(?: (janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre))?\b/);
+    if (m) {
+      const day = /^(1er|premier)$/.test(m[1]) ? 1 : Number(m[1]);
+      if (day >= 1 && day <= 31) {
+        let ym = m[2] ? t0.slice(0, 4) + '-' + pad(MONTH_WORDS.indexOf(m[2]) + 1) : t0.slice(0, 7);
+        let d = clampDay(ym, day); if (d > t0) { ym = m[2] ? (Number(ym.slice(0, 4)) - 1) + ym.slice(4) : addMonths(ym, -1); d = clampDay(ym, day); }
+        r.date = d; s = s.replace(m[0], ' ');
+      }
+    }
+  }
+  /* Montant : « 64 euros 30 », « 64,30 », « 2 100 euros », « 12 euros et 50 centimes » */
+  s = s.replace(/(\d)\s(\d{3})\b/g, '$1$2');
+  let m = s.match(/(\d+)(?:[.,](\d{1,2}))?\s*euros?(?:\s*(?:et\s*)?(\d{1,2})(?:\s*centimes?)?\b)?/);
+  if (!m) m = s.match(/(\d+)(?:[.,](\d{1,2}))?/);
+  if (m) { const cents = m[2] || m[3] || ''; r.amount = Number(m[1]) * 100 + (cents ? Number(cents.padEnd(2, '0')) : 0); s = s.replace(m[0], ' '); }
+  /* Paiement */
+  const pays = [[/\bcarte (a debit )?differee?\b/, 'card'], [/\bcarte (a debit )?immediate?\b|\bdebit immediat\b/, 'cardNow'], [/\b(carte|cb|carte bleue|carte bancaire)\b/, 'card'], [/\b(especes|liquide|cash)\b/, 'cash'], [/\bcheque\b/, 'cheque'], [/\b(prelevement|preleve)\b/, 'directDebit'], [/\bvirement\b/, 'transfer']];
+  for (const [re, v] of pays) if (re.test(s)) { r.payment = v; s = s.replace(re, ' '); break; }
+  if (r.payment === 'transfer' && (r.type || type) !== 'income') r.payment = 'directDebit';
+  /* Catégorie citée par son nom, puis indices */
+  const plain = s;
+  for (const c of state.categories) { if (c.hidden || Object.values(SYSTEM).includes(c.name)) continue; const sub = c.subs.find(x => norm(x).length > 3 && plain.includes(' ' + norm(x) + ' ')); if (sub) { r.category = c.name; r.subcategory = sub; break; } if (plain.includes(' ' + norm(c.name) + ' ')) { r.category = c.name; break; } }
+  if (!r.category) for (const [re, c, sub] of SPOKEN_HINTS) if (re.test(plain) && catByName(c)) { r.category = c; r.subcategory = sub; break; }
+  /* Libellé : ce qui reste, sans les petits mots */
+  const words = raw.replace(/€/g, ' ').split(/\s+/).filter(w => { const n = norm(w).replace(/[^a-z0-9]/g, ''); return n && s.includes(' ' + n + ' ') && !/^(euros?|et|centimes?|a|au|aux|chez|pour|de|du|des|la|le|les|un|une|en|par|avec|depense|achat|achete|paye|payee|recu|revenu|j|ai|je|d)$/.test(n) && !/^\d+$/.test(n); });
+  if (words.length) r.label = words.join(' ').replace(/^./, c => c.toUpperCase()).slice(0, 100);
+  if (!r.category && r.label) { const g = guessCategory(r.label, r.type || type); if (g) { r.category = g.category; r.subcategory = g.subcategory; } }
+  return r;
+}

@@ -10,7 +10,7 @@ const IC = {
   tag: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', house: '<path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/>',
   transfer: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>', leaf: '<path d="M7 21c0-5 2-9 5-11M12 10c4 0 7-3 7-7-4 0-7 3-7 7z"/>', help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01"/>',
   phone: '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>', search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-  minus: '<path d="M5 12h14"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
+  minus: '<path d="M5 12h14"/>', mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
 };
 const ic = (n, s, w) => I(IC[n], s, w);
 
@@ -273,7 +273,7 @@ const getPressed = group => sf().querySelector(`[data-group="${group}"][aria-pre
 /* Menu « + » */
 function addMenu() {
   const big = (form, cls, icon, t, s) => `<button class="card row-item" data-act="form" data-form="${form}" style="background:${cls};border:0;min-height:76px"><span class="ico" style="background:#fff">${ic(icon, 20)}</span><span class="grow"><span class="t" style="display:block;font-size:17px">${t}</span><span class="s" style="display:block">${s}</span></span></button>`;
-  openSheet('Ajouter', `<div class="grid2">${big('expense', 'var(--coral-l)', 'minus', 'Dépense', 'Achat, facture')}${big('income', 'var(--pos-l)', 'plus', 'Revenu', 'Salaire, pension…')}</div><div class="sec">Raccourcis</div><div class="card list" style="padding:0">
+  openSheet('Ajouter', `<button class="btn ghost full" data-act="form" data-form="dict" style="min-height:58px;font-size:16px">${ic('mic', 22)} Dicter une opération</button><div class="grid2">${big('expense', 'var(--coral-l)', 'minus', 'Dépense', 'Achat, facture')}${big('income', 'var(--pos-l)', 'plus', 'Revenu', 'Salaire, pension…')}</div><div class="sec">Raccourcis</div><div class="card list" style="padding:0">
   ${[['bungalow', 'house', 'Revenu bungalow', 'Direct, Airbnb ou Booking, avec la commission'], ['sale', 'leaf', 'Vente diverse', 'Objets, plantes, brocante'], ['transfer', 'transfer', 'Virement entre mes comptes', 'Ne compte pas dans le budget'], ['schedule', 'cal', 'Nouvelle échéance', 'Prélèvement, crédit, salaire qui revient']].map(([f, i, t, s]) => `<button class="row-item" data-act="form" data-form="${f}"><span class="ico">${ic(i, 20)}</span><span class="grow"><span class="t" style="display:block">${t}</span><span class="s" style="display:block">${s}</span></span>${ic('r', 18)}</button>`).join('')}</div>`, '');
 }
 
@@ -284,12 +284,12 @@ function txForm(type, opts = {}) {
   const cat = t?.category || opts.category || '';
   const acc = t?.account || opts.account || defaultAccountId();
   const deferredTx = t && isDeferredAcc(accountById(t.account));
-  const pay = t ? (t.payment === 'deferred' ? 'card' : (t.payment === 'card' || t.payment === 'immediate') ? (deferredTx ? 'cardNow' : 'card') : t.payment) : (type === 'income' ? 'transfer' : 'card');
+  const pay = t ? (t.payment === 'deferred' ? 'card' : (t.payment === 'card' || t.payment === 'immediate') ? (deferredTx ? 'cardNow' : 'card') : t.payment) : (opts.payment || (type === 'income' ? 'transfer' : 'card'));
   const date = t?.date || opts.date || today();
   const payOptsFor = accId => { const o = type === 'income' ? [['transfer', 'Virement'], ['cash', 'Espèces'], ['cheque', 'Chèque']] : isDeferredAcc(accountById(accId)) ? [['card', 'Carte différée'], ['cardNow', 'Carte immédiate'], ['directDebit', 'Prélèvement / virement'], ['cash', 'Espèces']] : [['card', 'Carte'], ['directDebit', 'Prélèvement / virement'], ['cash', 'Espèces']]; if (t && !o.some(p => p[0] === pay) && pay !== 'cardNow' && pay !== 'card') o.push([pay, payLabel(pay)]); return o; };
   const payButtons = (accId, sel) => { const o = payOptsFor(accId); if (!o.some(p => p[0] === sel)) sel = sel === 'cardNow' ? 'card' : o[0][0]; return `<div class="opts" id="payBox" style="${o.length === 4 ? 'grid-template-columns:repeat(2,minmax(0,1fr))' : ''}">${o.map(([v, l]) => `<button type="button" class="opt" data-group="pay" data-v="${v}" aria-pressed="${v === sel}">${l}</button>`).join('')}</div>`; };
   const title = isEdit ? (t.treatment === 'transfer' ? 'Virement' : type === 'income' ? 'Revenu' : 'Dépense') : type === 'income' ? 'Nouveau revenu' : 'Nouvelle dépense';
-  const body = `${isEdit ? '' : `<div class="seg light" role="group" aria-label="Type" style="margin:0 auto;width:240px"><button type="button" data-act="switch-type" data-v="expense" aria-pressed="${type === 'expense'}">Dépense</button><button type="button" data-act="switch-type" data-v="income" aria-pressed="${type === 'income'}">Revenu</button></div>`}
+  const body = `${isEdit ? '' : `<div class="seg light" role="group" aria-label="Type" style="margin:0 auto;width:240px"><button type="button" data-act="switch-type" data-v="expense" aria-pressed="${type === 'expense'}">Dépense</button><button type="button" data-act="switch-type" data-v="income" aria-pressed="${type === 'income'}">Revenu</button></div><div id="dictBox" style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn ghost" data-act="dict" id="dictBtn">${ic('mic', 18)} Dicter l’opération</button><div id="dictOut" class="tiny" style="text-align:center">${opts.dictText ? '« ' + esc(opts.dictText) + ' » · vérifiez puis enregistrez' : 'Ex. « 64 euros 30 Intermarché carte », « pension 2100 euros hier »'}</div></div>`}
   <label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant</span><input name="amount" class="amount-in ${type === 'income' ? 'inc' : ''}" inputmode="decimal" autocomplete="off" placeholder="0,00 €" value="${t ? amountInput(t.amount) : opts.amount ? amountInput(opts.amount) : ''}"></label>
   <label class="f">${type === 'income' ? 'De qui / quoi ?' : 'Où / quoi ?'}<input name="label" list="labelsList" autocomplete="off" value="${esc(t?.label || opts.label || '')}" placeholder="${type === 'income' ? 'Ex. Pension, remboursement…' : 'Ex. Intermarché, pharmacie…'}"><datalist id="labelsList">${recentLabels(type).map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
   <input type="hidden" name="category" value="${esc(cat)}"><input type="hidden" name="subcategory" value="${esc(t?.subcategory || opts.subcategory || '')}">
@@ -328,7 +328,38 @@ function txForm(type, opts = {}) {
     const sum = F.splits.reduce((a, l) => a + (l.amount || 0), 0), total = parseAmount(val('amount')) || 0;
     box.innerHTML = F.splits.map((l, i) => `<div class="split-line"><select data-change="split-cat" data-i="${i}" aria-label="Catégorie ligne ${i + 1}">${catOptions(l.category, 'expense')}</select><input data-input="split-amt" data-i="${i}" inputmode="decimal" value="${l.amount ? amountInput(l.amount) : ''}" placeholder="0,00" aria-label="Montant ligne ${i + 1}"><button type="button" class="x" data-act="split-del" data-i="${i}" aria-label="Retirer la ligne">${ic('x', 14)}</button></div>`).join('') + `<div class="head small"><button type="button" class="link" data-act="split-add">+ Ajouter une ligne</button><span class="${sum === total ? 'pos b' : 'neg b'}">${sum === total ? 'Total juste ✓' : 'Reste ' + money(total - sum)}</span></div>`;
   };
+  const applyDict = text => {
+    const r = parseSpoken(text, type);
+    if (r.type && r.type !== type) { txForm(r.type, { ...opts, autoDict: false, amount: r.amount, label: r.label, category: r.category, subcategory: r.subcategory, payment: r.payment === 'cardNow' && !isDeferredAcc(accountById(val('account'))) ? 'card' : r.payment, date: r.date, dictText: text }); return; }
+    const e = sf().elements;
+    if (r.amount) e.amount.value = amountInput(r.amount);
+    if (r.label) e.label.value = r.label;
+    if (r.category) { e.category.value = r.category; e.subcategory.value = r.subcategory || ''; F.touchedCat = true; $('#guessNote').textContent = ''; drawCats(); }
+    if (r.date) e.date.value = r.date;
+    if (r.payment) { let v = r.payment; if (!sf().querySelector(`[data-group="pay"][data-v="${v}"]`)) v = v === 'cardNow' ? 'card' : v === 'transfer' ? 'directDebit' : v; if (sf().querySelector(`[data-group="pay"][data-v="${v}"]`)) pressed('pay', v); }
+    drawPay();
+    const miss = [!r.amount && 'le montant', !r.label && 'le libellé'].filter(Boolean);
+    $('#dictOut').innerHTML = '« ' + esc(text) + ' »<br>' + (miss.length ? '<b class="neg">Il manque ' + miss.join(' et ') + '.</b>' : 'Vérifiez, puis touchez Enregistrer.');
+    if (!r.amount) e.amount.focus();
+  };
+  const dictFallback = msg => {
+    $('#dictBox').innerHTML = `<label class="f">Votre phrase<span class="tiny" style="font-weight:500">${msg || 'Touchez le champ puis le micro 🎤 du clavier, et dites par exemple « 64 euros 30 Intermarché carte ».'}</span><span style="display:flex;gap:8px"><input name="dictText" class="in" placeholder="64,30 Intermarché carte" autocomplete="off"><button type="button" class="btn sm" data-act="dict-fill">Remplir</button></span></label><div id="dictOut" class="tiny" style="text-align:center"></div>`;
+    sf().elements.dictText.focus();
+  };
   const acts = {
+    dict: () => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR || window.mbNoSpeech) return dictFallback();
+      if (F.rec) { F.rec.stop(); return; }
+      let rec; try { rec = new SR(); } catch { window.mbNoSpeech = true; return dictFallback(); }
+      F.rec = rec; rec.lang = 'fr-FR'; rec.interimResults = true; rec.maxAlternatives = 1; let final = '';
+      const btn = $('#dictBtn'); btn.innerHTML = ic('mic', 18) + ' J’écoute… parlez (touchez pour arrêter)'; btn.style.background = 'var(--coral-l)'; btn.style.borderColor = 'var(--coral)';
+      rec.onresult = ev => { let txt = ''; for (const res of ev.results) { txt += res[0].transcript; if (res.isFinal) final = txt; } $('#dictOut').textContent = '« ' + txt + ' »'; };
+      rec.onerror = ev => { if (['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported'].includes(ev.error)) { window.mbNoSpeech = true; F.rec = null; dictFallback(ev.error === 'not-allowed' ? 'Le micro est refusé pour ce site. Utilisez le micro 🎤 du clavier dans ce champ :' : 'La dictée directe n’est pas disponible ici. Utilisez le micro 🎤 du clavier dans ce champ :'); } else if (ev.error === 'no-speech') toast('Je n’ai rien entendu. Réessayez.'); };
+      rec.onend = () => { F.rec = null; const b = $('#dictBtn'); if (b) { b.innerHTML = ic('mic', 18) + ' Dicter l’opération'; b.style.background = ''; b.style.borderColor = ''; } if (final.trim()) applyDict(final.trim()); };
+      try { rec.start(); } catch { F.rec = null; window.mbNoSpeech = true; dictFallback(); }
+    },
+    'dict-fill': () => { const v = val('dictText').trim(); if (v) applyDict(v); },
     'switch-type': b => { const cur = { amount: parseAmount(val('amount')), label: val('label') }; txForm(b.dataset.v, { ...opts, amount: cur.amount || undefined, label: cur.label }); },
     'pick-cat': b => { sf().elements.category.value = b.dataset.v; sf().elements.subcategory.value = ''; $('#guessNote').textContent = ''; drawCats(); },
     'all-cats': () => { const s = $('#allCats'); s.style.display = 'block'; s.focus(); },
@@ -366,7 +397,9 @@ function txForm(type, opts = {}) {
   };
   sheet.afterPress = g => { if (g === 'pay') drawPay(); };
   const orig = acts['pick-cat']; acts['pick-cat'] = b => { F.touchedCat = true; orig(b); };
+  sheet.onClose = () => { try { F.rec?.abort(); } catch {} };
   drawCats(); drawPay(); drawSplits();
+  if (opts.autoDict) acts.dict();
 }
 
 /* Revenu bungalow : brut + commission → 2 opérations */
@@ -583,6 +616,7 @@ function act(name, b) {
       const f = b.dataset.form;
       if (f === 'expense' || f === 'income') txForm(f, { category: b.dataset.cat });
       else if (f === 'sale') txForm('income', { category: 'Ventes diverses' });
+      else if (f === 'dict') txForm('expense', { autoDict: true });
       else if (f === 'bungalow') bungalowForm();
       else if (f === 'transfer') transferForm();
       else if (f === 'schedule') scheduleForm();
