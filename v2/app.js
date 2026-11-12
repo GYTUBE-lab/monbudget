@@ -322,7 +322,7 @@ function confirmDue(d, amount, date) {
   if (d.tx) { d.tx.status = undefined; delete d.tx.status; d.tx.amount = amount; if (date) { d.tx.date = date; if (d.tx.payment === 'deferred') d.tx.dueDate = dueDateFor(accountById(d.tx.account), date); } return d.tx; }
   const s = d.sched;
   if (s.type === 'transfer') { const ts = createTransfer(s.account, s.toAccount, date || d.date, amount, s.label); ts.forEach(t => { t.recurringId = s.id; t.recurringDate = d.date; }); return ts[0]; }
-  const t = buildTx({ account: s.account, type: s.type, date: date || d.date, amount, label: s.label, category: s.category, subcategory: s.subcategory, payment: s.payment || 'directDebit', splits: s.splits?.length && s.amount === amount ? s.splits : undefined, recurringId: s.id, recurringDate: d.date, budgetMonth: s.nextMonthBudget ? addMonths(d.date.slice(0, 7), 1) : undefined });
+  const t = buildTx({ account: s.account, type: s.type, date: date || d.date, amount, label: s.label, note: s.note, category: s.category, subcategory: s.subcategory, payment: s.payment || 'directDebit', splits: s.splits?.length && s.amount === amount ? s.splits : undefined, recurringId: s.id, recurringDate: d.date, budgetMonth: s.nextMonthBudget ? addMonths(d.date.slice(0, 7), 1) : undefined });
   state.transactions.push(t); return t;
 }
 
