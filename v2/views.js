@@ -381,7 +381,7 @@ function txForm(type, opts = {}) {
    ${isEdit ? '' : `<label class="toggle"><input type="checkbox" name="repeat"> Revient chaque mois : en faire une échéance</label>`}
   </div></details>${isEdit && t.treatment !== 'transfer' && t.treatment !== 'settlement' && !t.recurringId && activeAccounts().length > 1 ? `<div class="kvbox" style="padding:12px 14px;margin-top:4px"><div class="b" style="margin-bottom:6px">⇄ C’est un virement entre mes comptes ?</div><div style="display:flex;gap:8px"><select name="xferAcc" class="in" style="flex:1" aria-label="L’autre compte">${activeAccounts().filter(a => a.id !== t.account).map(a => `<option value="${esc(a.id)}">${type === 'income' ? 'Depuis ' : 'Vers '}${esc(a.name)}</option>`).join('')}</select><button type="button" class="btn ghost" style="flex:0 0 auto" data-act="to-transfer">Oui</button></div><div class="tiny" style="margin-top:6px">Elle ne comptera plus en ${type === 'income' ? 'revenu' : 'dépense'}, et l’autre compte sera mis à jour.</div></div>` : ''}`;
   const foot = (isEdit ? `<button class="btn danger" data-act="del" aria-label="Supprimer">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">${isEdit ? 'Enregistrer' : type === 'income' ? 'Enregistrer le revenu' : 'Enregistrer la dépense'}</button>`;
-  const F = { type, splits: t?.splits ? t.splits.map(l => ({ ...l })) : null, guessed: false, autoFirst: t?.splits?.length ? false : true };
+  const F = { dateTouched: isEdit, type, splits: t?.splits ? t.splits.map(l => ({ ...l })) : null, guessed: false, autoFirst: t?.splits?.length ? false : true };
   const drawCats = () => {
     const cur = val('category'); const guess = guessCategory(val('label'), type);
     const chips = [...new Set([cur, guess?.category, ...topCategories(type, 4), ...(type === 'income' ? ['Pension', 'Salaire', 'Revenus divers', 'Bungalow · Revenus', 'Ventes diverses'] : ['Alimentation', 'Voiture & transport', 'Santé et mutuelle', 'Entretien de la maison', 'Loisirs et passions'])].filter(c => c && catByName(c) && !catByName(c).hidden))].slice(0, 6);
@@ -422,6 +422,10 @@ function txForm(type, opts = {}) {
     if (!F.buys?.length) { const d = val('date') || today(); F.buys = [0, 1].map(() => ({ date: d, label: '', category: 'Alimentation', amount: 0 })); }
     const deferred = isDeferredAcc(accountById(val('account'))) && getPressed('pay') === 'card';
     autoTotal();
+    if (deferred && !F.dateTouched) { // date du débit = jour de débit de la carte qui suit le 1er achat
+      const first = F.buys.map(b => b.date).filter(validDate).sort()[0];
+      if (first) { const D = dueDateFor(accountById(val('account')), first), e = sf().elements; e.date.value = D; const db = sf().querySelector('[data-act="pick-date"][data-name="date"] .dv'); if (db) db.textContent = pickLabel(D, 'date'); drawPay(); }
+    }
     const [c, txt] = buyStatus();
     box.innerHTML = `<p class="tiny" style="margin:0">Montant en haut = total débité. Chaque achat devient une opération à sa propre date${deferred ? ', payée par ce débit de carte (date du débit : « ' + esc(dateFR(val('date'))) + ' », modifiable en bas)' : ''}. Ensuite, vous pourrez ouvrir un achat et <b>détailler son ticket</b>.</p>`
       + F.buys.map((b, i) => `<div class="split-card"><div class="grid2" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto 30px;gap:8px;align-items:end">${dateField('bd' + i, b.date, 'date', 'Achat ' + (i + 1), false, true)}<label class="f">Montant<input data-input="buy-amt" data-i="${i}" inputmode="decimal" value="${b.amount ? amountInput(b.amount) : ''}" placeholder="0,00"></label><button type="button" class="tkbtn" data-act="buy-tk" data-i="${i}" aria-pressed="${!!b.tkOn}" aria-label="Détailler le ticket de l’achat ${i + 1}">Ticket${b.tkOn ? ' ✓' : ''}</button><button type="button" class="x" data-act="buy-del" data-i="${i}" aria-label="Retirer l’achat">${ic('x', 14)}</button></div><input class="split-lbl" data-input="buy-lbl" data-i="${i}" value="${esc(b.label)}" placeholder="Où / quoi ? Ex. Leclerc, encre imprimante" aria-label="Achat ${i + 1} : où / quoi">${b.tkOn ? tkHTML(b, i) : `<select data-change="buy-cat" data-i="${i}" class="in" style="margin-top:6px" aria-label="Catégorie achat ${i + 1}">${catOptions(b.category, 'expense')}</select>`}</div>`).join('')
@@ -548,7 +552,9 @@ function txForm(type, opts = {}) {
     'split-cat': el => { F.splits[Number(el.dataset.i)].category = el.value; },
     'tk-cat': el => { F.buys[Number(el.dataset.i)].tk[Number(el.dataset.j)].category = el.value; },
     'buy-cat': el => { const b = F.buys[Number(el.dataset.i)]; b.category = el.value; b.touched = true; },
-    any: el => { if (['account', 'date'].includes(el.name)) { drawPay(); if (F.buys) drawBuys(); }
+    any: el => { if (el.name === 'date') F.dateTouched = true;
+      if (/^bd\d+$/.test(el.name || '')) drawBuys();
+      if (['account', 'date'].includes(el.name)) { drawPay(); if (F.buys) drawBuys(); }
       if (el.name === 'split') { if (el.checked && sf().elements.buys) { sf().elements.buys.checked = false; drawBuys(); } drawSplits(); }
       if (el.name === 'buys') { if (el.checked) { sf().elements.split.checked = false; drawSplits(); const d = sf().querySelector('details.more'); if (d) d.open = true;
         if (isDeferredAcc(accountById(val('account'))) && getPressed('pay') !== 'card') { sf().querySelectorAll('[data-group="pay"]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === 'card'))); drawPay(); } } drawBuys(); } }
