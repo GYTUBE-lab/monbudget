@@ -187,6 +187,7 @@ table.t td{border-top:1px solid var(--line);padding:9px 0;text-align:right}
 .qdates{display:flex;gap:8px;flex-wrap:wrap;margin-top:-6px}
 .qdates .chip{height:34px;padding:0 14px;border-radius:17px;border:1px solid var(--field);background:#fff;color:var(--ink,inherit);font:600 13px inherit;font-family:inherit;cursor:pointer}
 .qdates .chip[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
+.update-bar{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 8px);z-index:9999;border:0;border-radius:14px;padding:12px 14px;background:var(--coral,#e4572e);color:#fff;font:700 14px inherit;font-family:inherit;box-shadow:0 6px 20px rgba(0,0,0,.2);cursor:pointer}
 </style>
 </head>
 <body>
@@ -200,7 +201,22 @@ table.t td{border-top:1px solid var(--line);padding:9px 0;text-align:right}
 <script src="views.js"></script>
 <script src="sync.js"></script>
 <script>
-if('serviceWorker' in navigator&&location.protocol!=='file:')window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+if('serviceWorker' in navigator&&location.protocol!=='file:')window.addEventListener('load',()=>{
+  const had=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    // l'application revient au premier plan : on vérifie s'il y a une nouvelle version
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});
+    setInterval(()=>reg.update().catch(()=>{}),30*60*1000);
+  }).catch(()=>{});
+  let done=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(!had||done)return;done=true;
+    const busy=document.getElementById('sheet')?.open;
+    if(!busy){location.reload();return;}
+    const b=document.createElement('button');b.className='update-bar';b.textContent='Nouvelle version disponible · Toucher pour actualiser';
+    b.onclick=()=>location.reload();document.body.appendChild(b);
+  });
+});
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 </script>
 </body>
