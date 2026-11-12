@@ -144,9 +144,10 @@ function dueView() {
   if (past.length) h += `<div class="sec">Passées ? Touchez ✓ pour confirmer</div><section class="card list">${past.map(d => dueRow(d, true)).join('')}</section>`;
   if (next.length) h += `<div class="sec">À venir</div><section class="card list">${next.map(d => dueRow(d, false)).join('')}</section>`;
   for (const c of cards) { const ds = dayShort(c.date); h += `<button class="card row-item" data-act="page" data-page="card" style="background:var(--coral-l);border-radius:18px;padding:12px 14px"><span class="day" style="color:#7c2d12"><b style="color:#7c2d12">${ds.d}</b>${ds.m}</span><span class="grow"><span class="t" style="display:block">Carte différée${showAccounts() ? ' · ' + esc(accName(c.account)) : ''}</span><span class="s" style="display:block;color:#7c2d12">${c.date <= t0 ? 'Débitée' : 'Calculée seule'} · ${c.count} achat${c.count > 1 ? 's' : ''} du mois précédent</span></span><span class="amt neg">−${money(c.amount)}</span></button>`; }
-  if (!past.length && !next.length && !cards.length) h += `<p class="empty">Rien de prévu ce mois-ci.<br>Ajoutez vos prélèvements, crédits, salaire ou pension : ils apparaîtront chaque mois.</p>`;
+  if (!past.length && !next.length && !cards.length) h += `<p class="empty">Rien de prévu ${ui.acc ? 'sur <b>' + esc(accName(ui.acc)) + '</b> ' : ''}ce mois-ci.<br>${ui.acc ? 'Chaque compte a ses propres échéances : « Nouvelle échéance » les ajoute à ce compte.' : 'Ajoutez vos prélèvements, crédits, salaire ou pension : ils apparaîtront chaque mois.'}</p>`;
   h += `<button class="btn dashed full" data-act="form" data-form="schedule">${ic('plus', 18, 2.4)} Nouvelle échéance</button>`;
-  if (state.schedules.length) h += `<button class="btn ghost full" data-act="sched-list">Toutes mes échéances (${state.schedules.length})</button>`;
+  if (state.schedules.length) { const n = ui.acc ? state.schedules.filter(x => x.account === ui.acc || x.toAccount === ui.acc).length : state.schedules.length;
+    h += `<button class="btn ghost full" data-act="sched-list">${ui.acc ? 'Échéances de ' + esc(accName(ui.acc)) + ' (' + n + ')' : 'Toutes mes échéances (' + n + ')'}</button>`; }
   if (done.length) h += `<details class="card more"><summary>Déjà passées ce mois-ci (${done.length}) ${ic('down', 18)}</summary><div>${done.map(t => txRow(t, true)).join('')}</div></details>`;
   return h + '</main>';
 }
@@ -709,9 +710,17 @@ function scheduleForm(s) {
   sheet.afterPress = g => { if (g === 'stype' && !isT()) { const e = sf().elements; const cur = e.category.value; e.category.innerHTML = catOptions(cur, getPressed('stype')); drawSubs(); } if (g === 'every') drawMode(); drawType(); drawSum(); };
   drawSubs(); drawType(); drawMode(); drawSum();
 }
-function schedulesList() {
-  const by = [...state.schedules].sort((a, b) => schedDays(a)[0] - schedDays(b)[0]);
-  openSheet('Mes échéances', `<div class="card list" style="padding:0">${by.map(s => `<button class="row-item" data-act="edit-sched" data-id="${esc(s.id)}"><span class="day">${s.custom?.length ? `<b>${s.custom.length}</b>dates` : `<b>${schedDays(s).join(',')}</b>${s.every === 12 ? '/an' : s.every === 3 ? '/trim.' : '/mois'}`}</span><span class="grow"><span class="t" style="display:block">${esc(s.label)}</span><span class="s" style="display:block">${s.note ? esc(s.note) + ' · ' : ''}${s.type === 'transfer' ? 'Virement ' + esc(accName(s.account)) + ' → ' + esc(accName(s.toAccount)) : esc(s.category) + (showAccounts() ? ' · ' + esc(accName(s.account)) : '')}${s.end ? ' · jusqu’à ' + esc(monthLabel(s.end).toLowerCase()) : ''}</span></span><span class="amt ${s.type === 'income' ? 'pos' : s.type === 'transfer' ? '' : 'neg'}">${s.type === 'income' ? '+' : s.type === 'transfer' ? '⇄ ' : '−'}${money(s.amount)}</span></button>`).join('')}</div>`, `<button class="btn full" data-act="new">${ic('plus', 18)} Nouvelle échéance</button>`, {
+function schedulesList(all = !ui.acc) {
+  const sorted = [...state.schedules].sort((a, b) => schedDays(a)[0] - schedDays(b)[0]);
+  const accs = activeAccounts().filter(a => all || a.id === ui.acc);
+  const groups = accs.map(a => [a, sorted.filter(s => s.account === a.id || (!all && s.toAccount === a.id))]).filter(([, l]) => l.length);
+  const orphan = all ? sorted.filter(s => !accs.some(a => a.id === s.account)) : [];
+  if (orphan.length) groups.push([{ name: 'Comptes archivés' }, orphan]);
+  const row = s => `<button class="row-item" data-act="edit-sched" data-id="${esc(s.id)}"><span class="day">${s.custom?.length ? `<b>${s.custom.length}</b>dates` : `<b>${schedDays(s).join(',')}</b>${s.every === 12 ? '/an' : s.every === 3 ? '/trim.' : '/mois'}`}</span><span class="grow"><span class="t" style="display:block">${esc(s.label)}</span><span class="s" style="display:block">${s.note ? esc(s.note) + ' · ' : ''}${s.type === 'transfer' ? 'Virement ' + esc(accName(s.account)) + ' → ' + esc(accName(s.toAccount)) : esc(s.category) + (showAccounts() ? ' · ' + esc(accName(s.account)) : '')}${s.end ? ' · jusqu’à ' + esc(monthLabel(s.end).toLowerCase()) : ''}</span></span><span class="amt ${s.type === 'income' ? 'pos' : s.type === 'transfer' ? '' : 'neg'}">${s.type === 'income' ? '+' : s.type === 'transfer' ? '⇄ ' : '−'}${money(s.amount)}</span></button>`;
+  const body = (groups.length ? groups.map(([a, l]) => `${groups.length > 1 || all ? `<div class="sec" style="margin:4px 0 6px">${esc(a.name)} · ${l.length}</div>` : ''}<div class="card list" style="padding:0;margin-bottom:12px">${l.map(row).join('')}</div>`).join('') : `<p class="empty">Aucune échéance sur ${esc(accName(ui.acc))}.</p>`)
+    + (ui.acc ? `<button type="button" class="btn ghost full" data-act="toggle-all">${all ? 'Seulement ' + esc(accName(ui.acc)) : 'Voir les échéances de tous les comptes'}</button>` : '');
+  openSheet(all ? 'Mes échéances' : 'Échéances · ' + esc(accName(ui.acc)), body, `<button class="btn full" data-act="new">${ic('plus', 18)} Nouvelle échéance</button>`, {
+    'toggle-all': () => schedulesList(!all),
     'edit-sched': b => scheduleForm(state.schedules.find(x => x.id === b.dataset.id)), new: () => scheduleForm()
   });
 }
