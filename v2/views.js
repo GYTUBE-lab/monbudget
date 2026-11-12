@@ -255,20 +255,21 @@ function welcome() {
 
 /* ---------- Calendrier (dates, mois, jours du mois) ---------- */
 const WD = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-function pickLabel(v, mode, optional) {
+function pickLabel(v, mode, optional, short) {
   if (!v) return optional ? (mode === 'month' ? 'Sans fin' : 'Aucune') : 'Choisir…';
+  if (short && mode === 'date') return dateFR(v);
   if (mode === 'month') return monthLabel(v);
   if (mode === 'days') return daysLabel({ days: v.split(',').map(Number) });
   const d = new Date(v + 'T12:00:00'); return (v === today() ? 'Aujourd’hui, ' : '') + d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
-function dateField(name, value, mode, label, optional = false) {
-  return `<label class="f">${label}<input type="hidden" name="${name}" value="${esc(value || '')}"><button type="button" class="datebtn" data-act="pick-date" data-name="${name}" data-mode="${mode}" data-optional="${optional ? 1 : ''}"><span class="dv">${esc(pickLabel(value, mode, optional))}</span>${ic('cal', 18)}</button></label>`;
+function dateField(name, value, mode, label, optional = false, short = false) {
+  return `<label class="f">${label}<input type="hidden" name="${name}" value="${esc(value || '')}"><button type="button" class="datebtn" data-act="pick-date" data-name="${name}" data-mode="${mode}" data-optional="${optional ? 1 : ''}" data-short="${short ? 1 : ''}"><span class="dv">${esc(pickLabel(value, mode, optional, short))}</span>${ic('cal', 18)}</button></label>`;
 }
 const P = {};
 function openPicker(btn) {
   const root = btn.closest('form') || btn.closest('.welcome'); const input = root.querySelector(`input[name="${btn.dataset.name}"]`);
   const mode = btn.dataset.mode, v = input.value, base = (mode === 'date' && validDate(v)) ? v : (mode === 'month' && validMonth(v)) ? v + '-01' : today();
-  Object.assign(P, { btn, input, mode, optional: !!btn.dataset.optional, y: Number(base.slice(0, 4)), m: Number(base.slice(5, 7)), view: mode === 'month' ? 'months' : mode === 'days' ? 'days31' : 'days', sel: mode === 'days' ? new Set(v.split(',').filter(Boolean).map(Number)) : null });
+  Object.assign(P, { btn, input, mode, optional: !!btn.dataset.optional, short: !!btn.dataset.short, y: Number(base.slice(0, 4)), m: Number(base.slice(5, 7)), view: mode === 'month' ? 'months' : mode === 'days' ? 'days31' : 'days', sel: mode === 'days' ? new Set(v.split(',').filter(Boolean).map(Number)) : null });
   drawPicker(); const d = $('#picker'); if (!d.open) d.showModal();
 }
 function drawPicker() {
@@ -294,7 +295,7 @@ function drawPicker() {
   $('#picker').innerHTML = `<div class="pk">${head}${grid}<div class="pk-foot">${foot}<button type="button" class="btn ghost" data-p="cancel">Annuler</button></div></div>`;
 }
 function setPicked(v) {
-  P.input.value = v; P.btn.querySelector('.dv').textContent = pickLabel(v, P.mode, P.optional);
+  P.input.value = v; P.btn.querySelector('.dv').textContent = pickLabel(v, P.mode, P.optional, P.short);
   $('#picker').close(); P.input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 $('#picker').addEventListener('click', e => {
@@ -527,22 +528,33 @@ function scheduleForm(s) {
   const body = `<div class="seg light" role="group" aria-label="Type">${[['expense', 'Dépense'], ['income', 'Revenu'], ['transfer', 'Virement']].map(([v, l]) => `<button type="button" data-group="stype" data-v="${v}" aria-pressed="${s.type === v}">${l}</button>`).join('')}</div>
   ${isEdit ? '' : `<fieldset><legend>Choisir un modèle <span class="tiny" style="font-weight:500">· ou écrire le vôtre</span></legend><div class="pills">${TEMPLATES.map(x => `<button type="button" class="pill s" data-act="tpl" data-v="${esc(x[0])}" aria-pressed="false">${x[1] === 'income' ? '+ ' : x[1] === 'transfer' ? '⇄ ' : ''}${esc(x[0])}</button>`).join('')}</div></fieldset>`}
   <label class="f">Nom<input name="label" value="${esc(s.label)}" placeholder="Ex. EDF, crédit voiture, épargne…" autocomplete="off"></label>
-  <div class="grid2"><label class="f">Montant<input name="amount" inputmode="decimal" value="${amountInput(s.amount)}" placeholder="0,00 €" style="font:700 18px Outfit,sans-serif"></label>${dateField('days', schedDays(s).join(','), 'days', 'Quels jours ?')}</div>
+  <div class="grid2"><label class="f">Montant<input name="amount" inputmode="decimal" value="${amountInput(s.amount)}" placeholder="0,00 €" style="font:700 18px Outfit,sans-serif"></label><div data-mode="reg">${dateField('days', schedDays(s).join(','), 'days', 'Quels jours ?')}</div></div>
   <div class="grid2" data-only="t"><label class="f">Depuis<select name="account">${accOptions(s.account)}</select></label><label class="f">Vers<select name="toAccount">${accOptions(s.toAccount || otherAcc)}</select></label></div>
-  <fieldset><legend>Tous les</legend><div class="seg light">${[[1, 'mois'], [3, 'trimestres'], [12, 'ans']].map(([v, l]) => `<button type="button" data-group="every" data-v="${v}" aria-pressed="${(s.every || 1) === v}">${l}</button>`).join('')}</div></fieldset>
-  ${s.custom?.length ? `<p class="alert w">Cette échéance suit un calendrier précis repris de la version actuelle (${s.custom.length} dates). Les modifications de montant et de jours ne s’appliquent pas à ce calendrier.</p>` : ''}
+  <fieldset><legend>Quand ?</legend><div class="seg light">${[[1, 'Tous les mois'], [3, 'Trimestre'], [12, 'Année'], [0, 'Dates précises']].map(([v, l]) => `<button type="button" data-group="every" data-v="${v}" aria-pressed="${(s.custom?.length ? 0 : (s.every || 1)) === v}" style="font-size:13px">${l}</button>`).join('')}</div></fieldset>
+  <div data-mode="cus" id="customBox" style="display:flex;flex-direction:column;gap:8px"></div>
   <div class="alert" id="schedSum"></div>
   <details class="more" ${isEdit ? 'open' : ''}><summary><span class="link">Catégorie, compte, début et fin</span>${ic('down', 18)}</summary><div>
    <div class="grid2" data-only="nt"><label class="f">Catégorie<select name="category">${catOptions(s.category, s.type)}</select></label><label class="f">Sous-catégorie<select name="subcategory"></select></label></div>
    <div class="grid2" data-only="nt"><label class="f">Compte<select name="accountNT">${accOptions(s.account)}</select></label><label class="f">Mode<select name="payment">${[['directDebit', 'Prélèvement'], ['transfer', 'Virement'], ['card', 'Carte'], ['cheque', 'Chèque'], ['cash', 'Espèces']].map(([v, l]) => `<option value="${v}" ${s.payment === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
-   <div class="grid2">${dateField('start', s.start, 'month', 'À partir de')}${dateField('end', s.end || '', 'month', 'Dernière fois', true)}</div>
+   <div class="grid2" data-mode="reg">${dateField('start', s.start, 'month', 'À partir de')}${dateField('end', s.end || '', 'month', 'Dernière fois', true)}</div>
    <label class="toggle" data-only="nt"><input type="checkbox" name="nextMonth" ${s.nextMonthBudget ? 'checked' : ''}> Compte pour le budget du mois suivant (ex. pension versée en fin de mois)</label>
   </div></details>`;
   const isT = () => getPressed('stype') === 'transfer';
+  const isCus = () => getPressed('every') === '0';
+  const C = (s.custom || []).map(x => ({ ...x }));
+  const drawCustom = () => {
+    const box = $('#customBox'); if (!box) return;
+    const amt = parseAmount(val('amount')) || 0;
+    if (isCus() && !C.length) C.push({ date: '', amount: amt });
+    box.innerHTML = C.map((x, i) => `<div class="split-card"><div class="grid2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 36px;align-items:end">${dateField('cd' + i, x.date, 'date', 'Date ' + (i + 1), false, true)}<label class="f">Montant<input data-input="cus-amt" data-i="${i}" inputmode="decimal" value="${x.amount ? amountInput(x.amount) : ''}" placeholder="${amountInput(amt) || '0,00'}"></label><button type="button" class="x" data-act="cus-del" data-i="${i}" aria-label="Retirer la date ${i + 1}" style="margin-bottom:2px">${ic('x', 14)}</button></div></div>`).join('') + `<button type="button" class="btn dashed" data-act="cus-add">${ic('plus', 16, 2.4)} Ajouter une date</button><p class="tiny" style="margin:0">Ex. paiement en 4 fois : une ligne par prélèvement, à la date indiquée par le marchand.</p>`;
+  };
+  const drawMode = () => { sf().querySelectorAll('[data-mode]').forEach(el => { el.style.display = (el.dataset.mode === 'cus') === isCus() ? '' : 'none'; }); if (isCus()) drawCustom(); };
   const drawType = () => { sf().querySelectorAll('[data-only]').forEach(el => { el.style.display = (el.dataset.only === 't') === isT() ? '' : 'none'; }); };
   const drawSubs = () => { const c = catByName(val('category')); sf().elements.subcategory.innerHTML = '<option value="">—</option>' + (c?.subs || []).map(x => `<option ${x === s.subcategory ? 'selected' : ''}>${esc(x)}</option>`).join(''); };
   const drawSum = () => {
-    const e = sf().elements, ty = getPressed('stype'), d = daysLabel({ days: (val('days') || '1').split(',').map(Number) }), ev = Number(getPressed('every')) || 1, per = ev === 12 ? 'chaque année' : ev === 3 ? 'chaque trimestre' : 'chaque mois';
+    const e = sf().elements, ty = getPressed('stype'), ev = Number(getPressed('every')), cd = C.filter(x => x.date).map(x => x.date).sort();
+    const d = isCus() ? (cd.length ? cd.length + ' date' + (cd.length > 1 ? 's' : '') + ' :' : 'aux dates choisies') : daysLabel({ days: (val('days') || '1').split(',').map(Number) });
+    const per = isCus() ? cd.map(x => dateFR(x).slice(0, 5) + (x.slice(0, 4) !== today().slice(0, 4) ? '/' + x.slice(2, 4) : '')).join(', ') : ev === 12 ? 'chaque année' : ev === 3 ? 'chaque trimestre' : 'chaque mois';
     $('#schedSum').innerHTML = ty === 'transfer' ? `<span>Virement automatique de <b>${esc(accName(e.account.value))}</b> vers <b>${esc(accName(e.toAccount.value))}</b>, ${esc(d)} ${per}. Ne compte pas dans le budget.</span>`
       : `<span>${ty === 'income' ? 'Revenu' : 'Dépense'} · <b>${esc(val('category'))}${val('subcategory') ? ' / ' + esc(val('subcategory')) : ''}</b> · ${esc(accName(e.accountNT.value))} · ${payLabel(val('payment')).toLowerCase()} · ${esc(d)} ${per}${e.nextMonth.checked ? ' · budget du mois suivant' : ''}</span>`;
   };
@@ -554,16 +566,21 @@ function scheduleForm(s) {
       if (x[1] !== 'transfer') { e.category.innerHTML = catOptions(x[2], x[1]); e.category.value = x[2]; s.subcategory = x[3]; drawSubs(); e.payment.value = x[1] === 'income' ? 'transfer' : 'directDebit'; e.nextMonth.checked = x[0] === 'Pension'; }
       drawType(); drawSum(); e.amount.focus();
     },
+    'cus-add': () => { const last = C.filter(x => x.date).map(x => x.date).sort().pop(); C.push({ date: last ? clampDay(addMonths(last.slice(0, 7), 1), Number(last.slice(8))) : '', amount: parseAmount(val('amount')) || 0 }); drawCustom(); drawSum(); },
+    'cus-del': b => { C.splice(Number(b.dataset.i), 1); drawCustom(); drawSum(); },
     save: () => {
       try {
         const e = sf().elements, amount = parseAmount(e.amount.value), ty = getPressed('stype');
+        const custom = isCus() ? C.filter(x => x.date).map(x => ({ date: x.date, amount: x.amount || amount })).sort((a, b) => a.date.localeCompare(b.date)) : null;
+        if (isCus()) { if (!custom.length) throw Error('Ajoutez au moins une date.'); if (custom.some(x => !x.amount || x.amount <= 0)) throw Error('Indiquez le montant de chaque date.'); e.days.value = String(Number(custom[0].date.slice(8))); e.start.value = custom[0].date.slice(0, 7); e.end.value = custom[custom.length - 1].date.slice(0, 7); }
         if (!e.label.value.trim()) throw Error('Donnez un nom à l’échéance.');
-        if (!amount || amount <= 0) throw Error('Indiquez le montant.');
+        if ((!amount || amount <= 0) && !custom) throw Error('Indiquez le montant.');
         const days = (e.days.value || '').split(',').filter(Boolean).map(Number); if (!days.length) throw Error('Choisissez au moins un jour.');
         if (!validMonth(e.start.value)) throw Error('Mois de départ incorrect.');
         if (e.end.value && e.end.value < e.start.value) throw Error('La dernière fois est avant le début.');
         if (ty === 'transfer' && (!e.toAccount.value || e.toAccount.value === e.account.value)) throw Error('Choisissez deux comptes différents pour le virement.');
-        const n = { ...s, id: s.id || uid(), label: e.label.value.trim(), amount, type: ty, days, day: days[0], every: Number(getPressed('every')) || 1, start: e.start.value, end: e.end.value || '', skip: s.skip || [] };
+        const n = { ...s, id: s.id || uid(), label: e.label.value.trim(), amount: amount || custom[0].amount, type: ty, days, day: days[0], every: Number(getPressed('every')) || 1, start: e.start.value, end: e.end.value || '', skip: s.skip || [] };
+        if (custom) n.custom = custom; else delete n.custom;
         if (ty === 'transfer') { n.account = e.account.value; n.toAccount = e.toAccount.value; n.category = SYSTEM.transfer; n.subcategory = ''; n.payment = 'transfer'; n.nextMonthBudget = false; }
         else { n.account = e.accountNT.value; delete n.toAccount; n.category = e.category.value; n.subcategory = e.subcategory.value; n.payment = e.payment.value; n.nextMonthBudget = e.nextMonth.checked; }
         if (n.splits?.length && (ty === 'transfer' || n.splits.reduce((a, l) => a + l.amount, 0) !== n.amount)) delete n.splits;
@@ -574,19 +591,20 @@ function scheduleForm(s) {
     },
     del: () => { if (!confirm('Supprimer l’échéance « ' + s.label + ' » ?\nLes opérations déjà enregistrées sont conservées.')) return; state.schedules = state.schedules.filter(x => x.id !== s.id); state.transactions = state.transactions.filter(t => !(t.recurringId === s.id && isPlanned(t))); save(); closeSheet(); render(); toast('Échéance supprimée'); }
   }, { focus: isEdit ? null : '[name=label]' });
-  sheet.changes = { any: el => { if (el.name === 'category') { s.subcategory = ''; drawSubs(); } if (el.name === 'account') sf().elements.accountNT.value = el.value; if (el.name === 'accountNT') sf().elements.account.value = el.value; drawSum(); } };
-  sheet.afterPress = g => { if (g === 'stype' && !isT()) { const e = sf().elements; const cur = e.category.value; e.category.innerHTML = catOptions(cur, getPressed('stype')); drawSubs(); } drawType(); drawSum(); };
-  drawSubs(); drawType(); drawSum();
+  sheet.inputs = { 'cus-amt': el => { C[Number(el.dataset.i)].amount = parseAmount(el.value) || 0; C[Number(el.dataset.i)].touched = true; }, amount: () => { if (isCus()) { const a = parseAmount(val('amount')) || 0; C.forEach((x, i) => { if (!x.touched) { x.amount = a; const f = sf().querySelector(`[data-input="cus-amt"][data-i="${i}"]`); if (f) f.value = a ? amountInput(a) : ''; } }); } } };
+  sheet.changes = { any: el => { if (/^cd\d+$/.test(el.name)) { C[Number(el.name.slice(2))].date = el.value; drawSum(); return; } if (el.name === 'category') { s.subcategory = ''; drawSubs(); } if (el.name === 'account') sf().elements.accountNT.value = el.value; if (el.name === 'accountNT') sf().elements.account.value = el.value; drawSum(); } };
+  sheet.afterPress = g => { if (g === 'stype' && !isT()) { const e = sf().elements; const cur = e.category.value; e.category.innerHTML = catOptions(cur, getPressed('stype')); drawSubs(); } if (g === 'every') drawMode(); drawType(); drawSum(); };
+  drawSubs(); drawType(); drawMode(); drawSum();
 }
 function schedulesList() {
   const by = [...state.schedules].sort((a, b) => schedDays(a)[0] - schedDays(b)[0]);
-  openSheet('Mes échéances', `<div class="card list" style="padding:0">${by.map(s => `<button class="row-item" data-act="edit-sched" data-id="${esc(s.id)}"><span class="day"><b>${schedDays(s).join(',')}</b>${s.every === 12 ? '/an' : s.every === 3 ? '/trim.' : '/mois'}</span><span class="grow"><span class="t" style="display:block">${esc(s.label)}</span><span class="s" style="display:block">${s.type === 'transfer' ? 'Virement ' + esc(accName(s.account)) + ' → ' + esc(accName(s.toAccount)) : esc(s.category) + (showAccounts() ? ' · ' + esc(accName(s.account)) : '')}${s.end ? ' · jusqu’à ' + esc(monthLabel(s.end).toLowerCase()) : ''}</span></span><span class="amt ${s.type === 'income' ? 'pos' : s.type === 'transfer' ? '' : 'neg'}">${s.type === 'income' ? '+' : s.type === 'transfer' ? '⇄ ' : '−'}${money(s.amount)}</span></button>`).join('')}</div>`, `<button class="btn full" data-act="new">${ic('plus', 18)} Nouvelle échéance</button>`, {
+  openSheet('Mes échéances', `<div class="card list" style="padding:0">${by.map(s => `<button class="row-item" data-act="edit-sched" data-id="${esc(s.id)}"><span class="day">${s.custom?.length ? `<b>${s.custom.length}</b>dates` : `<b>${schedDays(s).join(',')}</b>${s.every === 12 ? '/an' : s.every === 3 ? '/trim.' : '/mois'}`}</span><span class="grow"><span class="t" style="display:block">${esc(s.label)}</span><span class="s" style="display:block">${s.type === 'transfer' ? 'Virement ' + esc(accName(s.account)) + ' → ' + esc(accName(s.toAccount)) : esc(s.category) + (showAccounts() ? ' · ' + esc(accName(s.account)) : '')}${s.end ? ' · jusqu’à ' + esc(monthLabel(s.end).toLowerCase()) : ''}</span></span><span class="amt ${s.type === 'income' ? 'pos' : s.type === 'transfer' ? '' : 'neg'}">${s.type === 'income' ? '+' : s.type === 'transfer' ? '⇄ ' : '−'}${money(s.amount)}</span></button>`).join('')}</div>`, `<button class="btn full" data-act="new">${ic('plus', 18)} Nouvelle échéance</button>`, {
     'edit-sched': b => scheduleForm(state.schedules.find(x => x.id === b.dataset.id)), new: () => scheduleForm()
   });
 }
 /* Confirmer / corriger / modifier une échéance */
 function dueSheet(d) {
-  const t0 = today(), multi = d.sched && schedDays(d.sched).length > 1, tr = d.type === 'transfer';
+  const t0 = today(), multi = d.sched && (schedDays(d.sched).length > 1 || !!d.sched.custom?.length), tr = d.type === 'transfer';
   const what = tr ? 'Virement ' + esc(accName(d.account)) + ' → ' + esc(accName(d.toAccount)) : esc(d.category) + ' · ' + esc(accName(d.account));
   openSheet(esc(d.label), `<div class="small">${what} · prévue le ${dateFR(d.date)}</div><label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant ${tr ? 'viré' : 'passé sur le compte'}</span><input name="amount" class="amount-in ${d.type === 'income' ? 'inc' : tr ? '' : ''}" style="${tr ? 'color:var(--ink)' : ''}" inputmode="decimal" value="${amountInput(d.amount)}"></label>${dateField('date', d.date <= t0 ? d.date : t0, 'date', 'Date')}${d.sched ? `<label class="toggle"><input type="checkbox" name="keep"> Ce nouveau montant s’applique aussi aux prochaines fois</label><button type="button" class="btn ghost full" data-act="sched-edit">${ic('edit', 18)} Modifier l’échéance (montant, jours, compte…)</button>` : `<button type="button" class="btn ghost full" data-act="edit">${ic('edit', 18)} Modifier l’opération prévue</button>`}`,
     `${d.sched ? `<button class="btn ghost" data-act="skip">${multi ? 'Pas cette fois' : 'Pas ce mois-ci'}</button>` : ''}<button class="btn full" data-act="ok">${ic('check', 18, 2.6)} C’est passé</button>`, {

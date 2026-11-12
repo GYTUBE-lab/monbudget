@@ -218,12 +218,12 @@ function occurrences(s, month) {
   return [...new Set(schedDays(s).map(d => clampDay(month, d)))].map(date => ({ date, amount: s.amount }));
 }
 const schedDays = s => (s.days?.length ? s.days : [s.day || 1]).map(Number).sort((a, b) => a - b);
-const daysLabel = s => { const d = schedDays(s); return d.length === 1 ? 'le ' + d[0] : 'les ' + d.slice(0, -1).join(', ') + ' et ' + d[d.length - 1]; };
+const daysLabel = s => { if (s.custom?.length) return s.custom.length + ' date' + (s.custom.length > 1 ? 's' : '') + ' précise' + (s.custom.length > 1 ? 's' : ''); const d = schedDays(s); return d.length === 1 ? 'le ' + d[0] : 'les ' + d.slice(0, -1).join(', ') + ' et ' + d[d.length - 1]; };
 /* Une opération correspond à une occurrence : même mois si un seul jour, même date sinon */
-const sameOcc = (s, t, date) => t.recurringId === s.id && (schedDays(s).length > 1 && !s.custom?.length ? (t.recurringDate || t.date) === date : (t.recurringDate || t.date).slice(0, 7) === date.slice(0, 7)) && (s.type !== 'transfer' || t.type === 'expense');
+const sameOcc = (s, t, date) => t.recurringId === s.id && (schedDays(s).length > 1 || s.custom?.length ? (t.recurringDate || t.date) === date : (t.recurringDate || t.date).slice(0, 7) === date.slice(0, 7)) && (s.type !== 'transfer' || t.type === 'expense');
 const isDone = (s, date) => state.transactions.some(t => sameOcc(s, t, date) && !isPlanned(t));
 const plannedFor = (s, date) => state.transactions.find(t => sameOcc(s, t, date) && isPlanned(t));
-const isSkipped = (s, date) => (s.skip || []).includes(date) || ((s.skip || []).includes(date.slice(0, 7)) && schedDays(s).length === 1);
+const isSkipped = (s, date) => (s.skip || []).includes(date) || ((s.skip || []).includes(date.slice(0, 7)) && schedDays(s).length === 1 && !s.custom?.length);
 /* Liste de ce qui reste à passer dans le mois */
 function dueList(month, acc = '') {
   const out = [];
