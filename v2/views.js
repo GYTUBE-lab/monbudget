@@ -27,13 +27,13 @@ const monthNav = (light = false) => `<div class="month${light ? ' light' : ''}">
 const showAccounts = () => activeAccounts().length > 1;
 function txRow(t, showDate = false) {
   const bits = [];
-  if (showDate) bits.push(dateFR(t.date));
+  if (isPlanned(t)) bits.push('<b>Prévue le ' + dateFR(t.date).slice(0, 5) + ' · pas encore passée</b>');
+  else if (showDate) bits.push(dateFR(t.date));
   bits.push(t.treatment === 'transfer' ? 'Virement interne' : t.treatment === 'settlement' ? 'Débit global carte · déjà compté' : t.splits?.length ? 'Réparti · ' + t.splits.length + ' lignes' : esc(t.category) + (t.subcategory ? ' / ' + esc(t.subcategory) : ''));
   if (t.note && t.treatment !== 'transfer' && t.treatment !== 'settlement') bits.push(esc(t.note));
   if (showAccounts()) bits.push(esc(accName(t.account)));
   if (t.payment === 'deferred') bits.push('carte différée → ' + dateFR(t.dueDate).slice(0, 5));
-  if (isPlanned(t)) bits.push('prévue');
-  return `<button class="row-item" data-act="edit-tx" data-id="${esc(t.id)}"><span class="grow"><span class="t" style="display:block">${esc(t.label)}</span><span class="s" style="display:block">${bits.join(' · ')}</span></span><span class="amt ${amtCls(t)}">${t.type === 'income' ? '+' : '−'}${money(t.amount)}</span></button>`;
+  return `<button class="row-item" data-act="edit-tx" data-id="${esc(t.id)}"><span class="grow"><span class="t" style="display:block">${esc(t.label)}</span><span class="s" style="display:block">${bits.join(' · ')}</span></span><span class="amt ${amtCls(t)}"${isPlanned(t) ? ' style="opacity:.5"' : ''}>${t.type === 'income' ? '+' : '−'}${money(t.amount)}</span></button>`;
 }
 
 /* ---------- Rendu principal ---------- */
@@ -82,7 +82,7 @@ function homeMain(m, acc, g) {
   const env = Object.entries(state.budgets).filter(([c, v]) => v > 0 && (g === 'all' || (groupOf(c) === 'bungalow') === (g === 'bungalow'))).map(([c, v]) => ({ c, v, spent: tot.byCat['expense|' + c] || 0 })).sort((a, b) => b.spent / b.v - a.spent / a.v);
   if (env.length) h += `<section class="card"><div class="head" style="margin-bottom:10px"><h2>Enveloppes</h2><button class="link" data-act="page" data-page="budgets">Tout voir</button></div>${env.slice(0, 4).map(e => envRow(e)).join('')}</section>`;
   /* Dernières opérations */
-  const ops = monthTx(m, acc).filter(t => g === 'all' || t.treatment === 'transfer' || (groupOf(t.category) === 'bungalow') === (g === 'bungalow')).slice(0, 6);
+  const ops = monthTx(m, acc).filter(t => !isPlanned(t)).filter(t => g === 'all' || t.treatment === 'transfer' || (groupOf(t.category) === 'bungalow') === (g === 'bungalow')).slice(0, 6);
   h += `<section class="card list"><div class="head"><h2>Dernières opérations</h2><button class="link" data-act="tab" data-tab="ops">Tout voir</button></div>${ops.length ? ops.map(t => txRow(t, true)).join('') : `<p class="empty">Aucune opération en ${esc(monthLabel(m).toLowerCase())}. Touchez + pour en ajouter.</p>`}</section>`;
   return h;
 }
