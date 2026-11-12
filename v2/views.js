@@ -328,7 +328,15 @@ function openSheet(title, body, foot, acts = {}, opts = {}) {
   if (opts.focus) setTimeout(() => d.querySelector(opts.focus)?.focus(), 80);
 }
 function closeSheet() { const d = $('#sheet'); if (d.open) d.close(); sheet.acts = {}; }
-$('#sheet').addEventListener('click', e => { if (e.target === $('#sheet')) closeSheet(); });
+const sheetDirty = () => !!sf()?.dataset.dirty;
+$('#sheet').addEventListener('click', e => { if (e.target !== $('#sheet')) return; if (sheetDirty()) { toast('Saisie en cours : touchez ✕ pour fermer'); return; } closeSheet(); });
+$('#sheet').addEventListener('cancel', e => { if (sheetDirty()) { e.preventDefault(); toast('Saisie en cours : touchez ✕ pour fermer'); } });
+$('#sheet').addEventListener('input', e => { if (e.target.closest('#sf')) sf().dataset.dirty = '1'; });
+/* Brouillon de saisie (gardé si la fenêtre se ferme sans enregistrer) */
+const DRAFT_KEY = 'mon-budget-v2-draft';
+let txDraft = null;
+try { txDraft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch { txDraft = null; }
+const setDraft = d => { txDraft = d; try { d ? localStorage.setItem(DRAFT_KEY, JSON.stringify(d)) : localStorage.removeItem(DRAFT_KEY); } catch { } };
 $('#sheet').addEventListener('close', () => { sheet.onClose?.(); sheet.onClose = null; });
 const sf = () => $('#sf');
 const val = n => sf()?.elements[n]?.value ?? '';
@@ -355,14 +363,15 @@ function txForm(type, opts = {}) {
   const payButtons = (accId, sel) => { const o = payOptsFor(accId); if (!o.some(p => p[0] === sel)) sel = sel === 'cardNow' ? 'card' : o[0][0]; return `<div class="opts" id="payBox" style="${o.length === 4 ? 'grid-template-columns:repeat(2,minmax(0,1fr))' : ''}">${o.map(([v, l]) => `<button type="button" class="opt" data-group="pay" data-v="${v}" aria-pressed="${v === sel}">${l}</button>`).join('')}</div>`; };
   const title = isEdit ? (t.treatment === 'transfer' ? 'Virement' : type === 'income' ? 'Revenu' : 'Dépense') : type === 'income' ? 'Nouveau revenu' : 'Nouvelle dépense';
   const srcSched = t?.recurringId ? state.schedules.find(x => x.id === t.recurringId) : null;
-  const body = `${srcSched ? `<div class="alert w" style="align-items:center"><span style="flex:1">Issue de l’échéance <b>« ${esc(srcSched.label)} »</b>${srcSched.note ? ' · ' + esc(srcSched.note) : ''} (${esc(daysLabel(srcSched))})</span><button type="button" class="btn sm ghost" data-act="open-sched">${ic('edit', 16)} Modifier l’échéance</button></div>` : ''}${isEdit ? '' : `<div class="seg light" role="group" aria-label="Type" style="margin:0 auto;width:240px"><button type="button" data-act="switch-type" data-v="expense" aria-pressed="${type === 'expense'}">Dépense</button><button type="button" data-act="switch-type" data-v="income" aria-pressed="${type === 'income'}">Revenu</button></div><div id="dictBox" style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn ghost" data-act="dict" id="dictBtn">${ic('mic', 18)} Dicter l’opération</button><div id="dictOut" class="tiny" style="text-align:center">${opts.dictText ? '« ' + esc(opts.dictText) + ' » · vérifiez puis enregistrez' : 'Ex. « 64 euros 30 Intermarché carte », « pension 2100 euros hier »'}</div></div>`}
+  const showDraft = !isEdit && !opts.draft && txDraft && txDraft.type === type;
+  const body = `${showDraft ? `<div class="alert w" style="align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:160px">Saisie non enregistrée${txDraft.label ? ' « ' + esc(txDraft.label) + ' »' : ''}${txDraft.amount ? ' · ' + esc(txDraft.amount) + ' €' : ''}${txDraft.buys?.length ? ' · ' + txDraft.buys.length + ' achats' : ''}</span><button type="button" class="btn small" data-act="draft-resume">Reprendre</button><button type="button" class="link" data-act="draft-drop">Effacer</button></div>` : ''}${srcSched ? `<div class="alert w" style="align-items:center"><span style="flex:1">Issue de l’échéance <b>« ${esc(srcSched.label)} »</b>${srcSched.note ? ' · ' + esc(srcSched.note) : ''} (${esc(daysLabel(srcSched))})</span><button type="button" class="btn sm ghost" data-act="open-sched">${ic('edit', 16)} Modifier l’échéance</button></div>` : ''}${isEdit ? '' : `<div class="seg light" role="group" aria-label="Type" style="margin:0 auto;width:240px"><button type="button" data-act="switch-type" data-v="expense" aria-pressed="${type === 'expense'}">Dépense</button><button type="button" data-act="switch-type" data-v="income" aria-pressed="${type === 'income'}">Revenu</button></div><div id="dictBox" style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn ghost" data-act="dict" id="dictBtn">${ic('mic', 18)} Dicter l’opération</button><div id="dictOut" class="tiny" style="text-align:center">${opts.dictText ? '« ' + esc(opts.dictText) + ' » · vérifiez puis enregistrez' : 'Ex. « 64 euros 30 Intermarché carte », « pension 2100 euros hier »'}</div></div>`}
   <label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant</span><input name="amount" class="amount-in ${type === 'income' ? 'inc' : ''}" inputmode="decimal" autocomplete="off" placeholder="0,00 €" value="${t ? amountInput(t.amount) : opts.amount ? amountInput(opts.amount) : ''}"></label>
   <label class="f">${type === 'income' ? 'De qui / quoi ?' : 'Où / quoi ?'}<input name="label" list="labelsList" autocomplete="off" value="${esc(t?.label || opts.label || '')}" placeholder="${type === 'income' ? 'Ex. Pension, remboursement…' : 'Ex. Intermarché, pharmacie…'}"><datalist id="labelsList">${recentLabels(type).map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
   <input type="hidden" name="category" value="${esc(cat)}"><input type="hidden" name="subcategory" value="${esc(t?.subcategory || opts.subcategory || '')}">
   <fieldset><legend>Catégorie <span id="guessNote" class="tiny" style="font-weight:500;color:var(--pos)"></span></legend><div id="catBox"></div></fieldset>
   <fieldset><legend>${type === 'income' ? 'Reçu par' : 'Payé avec'}</legend>${payButtons(acc, pay)}</fieldset>
   <div id="payInfo"></div>
-  ${type === 'expense' ? `<label class="toggle" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="split" ${t?.splits?.length || opts.split ? 'checked' : ''}> <span><b>Détailler le ticket</b> <span class="tiny">· un seul achat, plusieurs articles ou catégories (supermarché…)</span></span></label><div id="splitBox" style="display:flex;flex-direction:column;gap:8px"></div>
+  ${type === 'expense' ? `<label class="toggle" id="splitTog" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="split" ${t?.splits?.length || opts.split ? 'checked' : ''}> <span><b>Détailler le ticket</b> <span class="tiny">· un seul achat, plusieurs articles ou catégories (supermarché…)</span></span></label><div id="splitBox" style="display:flex;flex-direction:column;gap:8px"></div>
   ${!t || (!t.splits?.length && !t.recurringId && !t.treatment) ? `<label class="toggle" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="buys" ${opts.buys ? 'checked' : ''}> <span><b>Détailler les achats</b> <span class="tiny">· plusieurs achats payés en une fois (débit mensuel de la carte…)</span></span></label><div id="buyBox" style="display:flex;flex-direction:column;gap:8px"></div>` : ''}` : ''}
   <details class="more" ${isEdit || opts.open ? 'open' : ''}><summary><span><span id="whenWhere">${date === today() ? 'Aujourd’hui' : dateFR(date)} · ${esc(accName(acc))}</span> <span class="link">Changer, plus d’options</span></span>${ic('down', 18)}</summary><div>
    <div class="grid2">${dateField('date', date, 'date', 'Date')}<label class="f">Compte<select name="account">${accOptions(acc)}</select></label></div>
@@ -390,7 +399,7 @@ function txForm(type, opts = {}) {
   };
   const drawSplits = () => {
     const box = $('#splitBox'); if (!box) return;
-    if (!sf().elements.split.checked) { box.innerHTML = ''; F.splits = null; return; }
+    if (!sf().elements.split.checked) { box.innerHTML = ''; return; }
     if (!F.splits?.length) F.splits = [{ label: '', category: val('category') || 'Alimentation', subcategory: '', amount: parseAmount(val('amount')) || 0 }, { label: '', category: 'Entretien de la maison', subcategory: '', amount: 0 }];
     const sum = F.splits.reduce((a, l) => a + (l.amount || 0), 0), total = parseAmount(val('amount')) || 0;
     box.innerHTML = F.splits.map((l, i) => `<div class="split-card"><div class="split-line"><select data-change="split-cat" data-i="${i}" aria-label="Catégorie ligne ${i + 1}">${catOptions(l.category, 'expense')}</select><input data-input="split-amt" data-i="${i}" inputmode="decimal" value="${l.amount ? amountInput(l.amount) : ''}" placeholder="0,00" aria-label="Montant ligne ${i + 1}"><button type="button" class="x" data-act="split-del" data-i="${i}" aria-label="Retirer la ligne">${ic('x', 14)}</button></div><input class="split-lbl" data-input="split-lbl" data-i="${i}" value="${esc(l.label && l.label !== l.category ? l.label : '')}" placeholder="${i === 0 && F.autoFirst !== false ? 'Le reste du ticket (calculé seul)' : 'Article, détail (facultatif)'}" aria-label="Détail ligne ${i + 1}"></div>`).join('') + `<div class="head small"><button type="button" class="link" data-act="split-add">+ Ajouter une ligne</button><span class="${sum === total ? 'pos b' : 'neg b'}">${sum === total ? 'Total juste ✓' : 'Reste ' + money(total - sum)}</span></div>`;
@@ -401,15 +410,20 @@ function txForm(type, opts = {}) {
   const updBuySum = () => { const el = $('#buySum'); if (!el) return; const [c, txt] = buyStatus(); el.className = 'b ' + c; el.textContent = txt; };
   const drawBuys = () => {
     const box = $('#buyBox'); if (!box) return;
-    if (!sf().elements.buys.checked) { box.innerHTML = ''; F.buys = null; return; }
+    const tog = $('#splitTog'); if (tog) tog.style.display = sf().elements.buys.checked ? 'none' : '';
+    if (!sf().elements.buys.checked) { box.innerHTML = ''; return; }
     readBuyDates();
     if (!F.buys?.length) { const d = val('date') || today(); F.buys = [0, 1].map(() => ({ date: d, label: '', category: 'Alimentation', amount: 0 })); }
     const deferred = isDeferredAcc(accountById(val('account'))) && getPressed('pay') === 'card';
     const [c, txt] = buyStatus();
     box.innerHTML = `<p class="tiny" style="margin:0">Montant en haut = total débité. Chaque achat devient une opération à sa propre date${deferred ? ', payée par ce débit de carte (date du débit : « ' + esc(dateFR(val('date'))) + ' », modifiable en bas)' : ''}. Ensuite, vous pourrez ouvrir un achat et <b>détailler son ticket</b>.</p>`
-      + F.buys.map((b, i) => `<div class="split-card"><div class="grid2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 36px;align-items:end">${dateField('bd' + i, b.date, 'date', 'Achat ' + (i + 1), false, true)}<label class="f">Montant<input data-input="buy-amt" data-i="${i}" inputmode="decimal" value="${b.amount ? amountInput(b.amount) : ''}" placeholder="0,00"></label><button type="button" class="x" data-act="buy-del" data-i="${i}" aria-label="Retirer l’achat">${ic('x', 14)}</button></div><input class="split-lbl" data-input="buy-lbl" data-i="${i}" value="${esc(b.label)}" placeholder="Où / quoi ? Ex. Leclerc, encre imprimante" aria-label="Achat ${i + 1} : où / quoi"><select data-change="buy-cat" data-i="${i}" class="in" style="margin-top:6px" aria-label="Catégorie achat ${i + 1}">${catOptions(b.category, 'expense')}</select></div>`).join('')
+      + F.buys.map((b, i) => `<div class="split-card"><div class="grid2" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto 30px;gap:8px;align-items:end">${dateField('bd' + i, b.date, 'date', 'Achat ' + (i + 1), false, true)}<label class="f">Montant<input data-input="buy-amt" data-i="${i}" inputmode="decimal" value="${b.amount ? amountInput(b.amount) : ''}" placeholder="0,00"></label><button type="button" class="tkbtn" data-act="buy-tk" data-i="${i}" aria-pressed="${!!b.tkOn}" aria-label="Détailler le ticket de l’achat ${i + 1}">Ticket${b.tkOn ? ' ✓' : ''}</button><button type="button" class="x" data-act="buy-del" data-i="${i}" aria-label="Retirer l’achat">${ic('x', 14)}</button></div><input class="split-lbl" data-input="buy-lbl" data-i="${i}" value="${esc(b.label)}" placeholder="Où / quoi ? Ex. Leclerc, encre imprimante" aria-label="Achat ${i + 1} : où / quoi">${b.tkOn ? tkHTML(b, i) : `<select data-change="buy-cat" data-i="${i}" class="in" style="margin-top:6px" aria-label="Catégorie achat ${i + 1}">${catOptions(b.category, 'expense')}</select>`}</div>`).join('')
       + `<div class="head small"><button type="button" class="link" data-act="buy-add">+ Ajouter un achat</button><span id="buySum" class="b ${c}">${txt}</span></div>`;
   };
+  const tkStatus = b => { const s = b.tk.reduce((a, l) => a + (l.amount || 0), 0); return s === b.amount ? ['pos', 'Ticket juste ✓'] : ['neg', (s < b.amount ? 'Reste ' : 'Trop ') + money(Math.abs(b.amount - s))]; };
+  const tkHTML = (b, i) => { const [c, txt] = tkStatus(b); return `<div class="ticket-sub">${b.tk.map((l, j) => `<div class="split-line"><select data-change="tk-cat" data-i="${i}" data-j="${j}" aria-label="Catégorie article ${j + 1}">${catOptions(l.category, 'expense')}</select><input data-input="tk-amt" data-i="${i}" data-j="${j}" inputmode="decimal" value="${l.amount ? amountInput(l.amount) : ''}" placeholder="0,00" aria-label="Montant article ${j + 1}"><button type="button" class="x" data-act="tk-del" data-i="${i}" data-j="${j}" aria-label="Retirer l’article">${ic('x', 14)}</button></div><input class="split-lbl" data-input="tk-lbl" data-i="${i}" data-j="${j}" value="${esc(l.label)}" placeholder="${j === 0 && b.tkAuto ? 'Le reste du ticket (calculé seul)' : 'Article (facultatif)'}" aria-label="Article ${j + 1}">`).join('')}<div class="head small"><button type="button" class="link" data-act="tk-add" data-i="${i}">+ Article</button><span id="tkSum${i}" class="b ${c}">${txt}</span></div></div>`; };
+  const tkAutoFill = (b, i) => { if (!b.tk || !b.tkAuto) return; b.tk[0].amount = Math.max(0, b.amount - b.tk.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); const inp = $(`#buyBox [data-input=tk-amt][data-i="${i}"][data-j="0"]`); if (inp) inp.value = b.tk[0].amount ? amountInput(b.tk[0].amount) : ''; };
+  const tkUpd = i => { const b = F.buys[i], el = $('#tkSum' + i); if (!el || !b.tk) return; const [c, txt] = tkStatus(b); el.className = 'b ' + c; el.textContent = txt; };
   const saveBuys = () => {
     readBuyDates();
     const e = sf().elements, lines = F.buys.filter(b => b.amount > 0).map(b => ({ ...b }));
@@ -420,7 +434,9 @@ function txForm(type, opts = {}) {
     const D = e.date.value, acc = e.account.value, pay = getPressed('pay'), mainLabel = e.label.value.trim() || 'Débit carte';
     const deferred = isDeferredAcc(accountById(acc)) && pay === 'card', groupId = uid();
     if (sum < total) lines.push({ date: D, label: mainLabel + ' · non détaillé', category: e.category.value || 'Autres', amount: total - sum });
-    const out = lines.map(b => { const g = guessCategory(b.label, 'expense'); return buildTx({ type: 'expense', account: acc, date: b.date, amount: b.amount, label: b.label || b.category, category: b.category, subcategory: g && g.category === b.category ? g.subcategory : '', payment: pay, dueDate: deferred && b.date <= D ? D : undefined, note: 'Payé par « ' + mainLabel + ' » du ' + dateFR(D), groupId, planned: e.planned.checked }); });
+    lines.forEach((b, i) => { if (!b.tkOn || !b.tk) return; b.splits = b.tk.filter(l => l.amount > 0).map(l => ({ label: l.label || l.category, category: l.category, subcategory: '', amount: l.amount }));
+      const s2 = b.splits.reduce((a, l) => a + l.amount, 0); if (s2 !== b.amount) throw Error('Achat ' + (i + 1) + (b.label ? ' (' + b.label + ')' : '') + ' : le ticket fait ' + money(s2) + ' au lieu de ' + money(b.amount) + '.'); });
+    const out = lines.map(b => { const g = guessCategory(b.label, 'expense'); return buildTx({ type: 'expense', account: acc, date: b.date, amount: b.amount, label: b.label || b.category, category: b.category, splits: b.splits, subcategory: g && g.category === b.category ? g.subcategory : '', payment: pay, dueDate: deferred && b.date <= D ? D : undefined, note: 'Payé par « ' + mainLabel + ' » du ' + dateFR(D), groupId, planned: e.planned.checked }); });
     if (deferred) upsertTx(buildTx({ id: t?.id, type: 'expense', account: acc, date: D, amount: total, label: mainLabel, category: SYSTEM.settlement, payment: 'directDebit', treatment: 'settlement', groupId, importId: t?.importId, bankLabel: t?.bankLabel, note: lines.length + ' achats détaillés', planned: e.planned.checked }));
     else if (t) deleteTx(t.id);
     out.forEach(x => state.transactions.push(x));
@@ -463,6 +479,11 @@ function txForm(type, opts = {}) {
     'pick-cat': b => { sf().elements.category.value = b.dataset.v; sf().elements.subcategory.value = ''; $('#guessNote').textContent = ''; drawCats(); },
     'all-cats': () => { const s = $('#allCats'); s.style.display = 'block'; s.focus(); },
     'pick-sub': b => { const cur = val('subcategory'); sf().elements.subcategory.value = cur === b.dataset.v ? '' : b.dataset.v; drawCats(); },
+    'buy-tk': b => { readBuyDates(); const x = F.buys[Number(b.dataset.i)]; x.tkOn = !x.tkOn; if (x.tkOn && !x.tk) { x.tk = [{ category: x.category, amount: x.amount, label: '' }, { category: 'Entretien de la maison', amount: 0, label: '' }]; x.tkAuto = true; } drawBuys(); },
+    'tk-add': b => { readBuyDates(); F.buys[Number(b.dataset.i)].tk.push({ category: 'Autres', amount: 0, label: '' }); drawBuys(); },
+    'tk-del': b => { readBuyDates(); const x = F.buys[Number(b.dataset.i)]; x.tk.splice(Number(b.dataset.j), 1); if (!x.tk.length) { x.tk = null; x.tkOn = false; } drawBuys(); },
+    'draft-resume': () => { const d = txDraft; setDraft(null); txForm(d.type, { ...opts, draft: d }); },
+    'draft-drop': () => { setDraft(null); const a = sf().querySelector('[data-act=draft-resume]')?.closest('.alert'); if (a) a.remove(); toast('Brouillon effacé'); },
     'buy-add': () => { readBuyDates(); const last = F.buys[F.buys.length - 1]; F.buys.push({ date: last?.date || today(), label: '', category: 'Alimentation', amount: 0 }); drawBuys(); },
     'buy-del': b => { readBuyDates(); F.buys.splice(Number(b.dataset.i), 1); if (!F.buys.length) sf().elements.buys.checked = false; drawBuys(); },
     'split-add': () => { F.splits.push({ label: '', category: 'Autres', subcategory: '', amount: 0 }); drawSplits(); },
@@ -487,18 +508,38 @@ function txForm(type, opts = {}) {
     'to-transfer': () => { try { const r = convertToTransfer(t, sf().elements.xferAcc.value); save(); closeSheet(); render(); toast(r === 'linked' ? 'Virement relié à l’autre compte' : 'Changé en virement entre mes comptes'); } catch (err) { alert(err.message); } },
     del: () => { if (!confirm('Supprimer « ' + t.label + ' » ?' + (t.transferId ? '\nLes deux côtés du virement seront supprimés.' : ''))) return; deleteTx(t.id); save(); closeSheet(); render(); toast('Supprimé'); }
   };
-  openSheet(title, body, foot, acts, { focus: isEdit ? null : '[name=amount]' });
+  const saves0 = saveCount;
+  const onClose = () => {
+    if (isEdit || saveCount !== saves0 || !sf()) return;
+    readBuyDates(); const e = sf().elements;
+    const has = e.amount.value.trim() || e.label.value.trim() || (F.buys || []).some(b => b.amount || b.label) || (F.splits || []).some(l => l.label);
+    if (!has) return;
+    setDraft({ type, at: Date.now(), amount: e.amount.value, label: e.label.value, category: e.category.value, subcategory: e.subcategory.value, note: e.note.value, account: e.account.value, date: e.date.value, pay: getPressed('pay'), splitOn: !!e.split?.checked, buysOn: !!e.buys?.checked, splits: F.splits, buys: F.buys, autoFirst: F.autoFirst });
+    toast('Saisie gardée en brouillon');
+  };
+  openSheet(title, body, foot, acts, { focus: isEdit || opts.draft ? null : '[name=amount]', onClose });
+  if (opts.draft) { const d = opts.draft, e = sf().elements;
+    for (const k of ['amount', 'label', 'category', 'subcategory', 'note', 'account', 'date']) if (e[k] && d[k] != null) e[k].value = d[k];
+    const db = e.date && sf().querySelector(`[data-act="pick-date"][data-name="date"]`); if (db) db.querySelector(".dv").textContent = pickLabel(d.date, "date");
+    if (d.pay) pressed('pay', d.pay);
+    F.splits = d.splits || null; F.buys = d.buys || null; if (d.autoFirst === false) F.autoFirst = false;
+    if (e.split) e.split.checked = !!d.splitOn; if (e.buys) e.buys.checked = !!d.buysOn;
+    if (d.buysOn) { const dt = sf().querySelector('details.more'); if (dt) dt.open = true; }
+    sf().dataset.dirty = '1'; }
   sheet.inputs = {
     label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = '· devinée d’après « ' + val('label') + ' »'; drawCats(); } } },
     amount: () => { updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
     'split-lbl': el => { F.splits[Number(el.dataset.i)].label = el.value; },
-    'buy-amt': el => { F.buys[Number(el.dataset.i)].amount = parseAmount(el.value) || 0; updBuySum(); },
+    'buy-amt': el => { const i = Number(el.dataset.i), b = F.buys[i]; b.amount = parseAmount(el.value) || 0; updBuySum(); tkAutoFill(b, i); tkUpd(i); },
+    'tk-amt': el => { const i = Number(el.dataset.i), j = Number(el.dataset.j), b = F.buys[i]; b.tk[j].amount = parseAmount(el.value) || 0; if (j === 0) b.tkAuto = false; else tkAutoFill(b, i); tkUpd(i); },
+    'tk-lbl': el => { F.buys[Number(el.dataset.i)].tk[Number(el.dataset.j)].label = el.value; },
     'buy-lbl': el => { const b = F.buys[Number(el.dataset.i)]; b.label = el.value; if (!b.touched) { const g = guessCategory(el.value, 'expense'); if (g) { b.category = g.category; const sel = $(`#buyBox [data-change=buy-cat][data-i="${el.dataset.i}"]`); if (sel) sel.value = g.category; } } },
     'split-amt': el => { const i = Number(el.dataset.i); F.splits[i].amount = parseAmount(el.value) || 0; if (i === 0) F.autoFirst = false; else if (F.autoFirst !== false) { const tot0 = parseAmount(val('amount')) || 0, rest = tot0 - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0); F.splits[0].amount = Math.max(0, rest); const f0 = sf().querySelector('[data-input="split-amt"][data-i="0"]'); if (f0) f0.value = rest > 0 ? amountInput(rest) : ''; } const s = F.splits.reduce((a, l) => a + l.amount, 0), tot = parseAmount(val('amount')) || 0; const span = $('#splitBox .head span'); if (span) { span.className = s === tot ? 'pos b' : 'neg b'; span.textContent = s === tot ? 'Total juste ✓' : 'Reste ' + money(tot - s); } }
   };
   sheet.changes = {
     'pick-cat-sel': el => { if (!el.value) return; F.touchedCat = true; sf().elements.category.value = el.value; sf().elements.subcategory.value = ''; drawCats(); },
     'split-cat': el => { F.splits[Number(el.dataset.i)].category = el.value; },
+    'tk-cat': el => { F.buys[Number(el.dataset.i)].tk[Number(el.dataset.j)].category = el.value; },
     'buy-cat': el => { const b = F.buys[Number(el.dataset.i)]; b.category = el.value; b.touched = true; },
     any: el => { if (['account', 'date'].includes(el.name)) { drawPay(); if (F.buys) drawBuys(); }
       if (el.name === 'split') { if (el.checked && sf().elements.buys) { sf().elements.buys.checked = false; drawBuys(); } drawSplits(); }
@@ -507,7 +548,7 @@ function txForm(type, opts = {}) {
   };
   sheet.afterPress = g => { if (g === 'pay') drawPay(); };
   const orig = acts['pick-cat']; acts['pick-cat'] = b => { F.touchedCat = true; orig(b); };
-  sheet.onClose = () => { try { F.rec?.abort(); } catch {} };
+  sheet.onClose = () => { try { F.rec?.abort(); } catch {} onClose(); };
   drawCats(); drawPay(); drawSplits(); drawBuys();
   if (opts.autoDict) acts.dict();
 }

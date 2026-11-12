@@ -96,7 +96,9 @@ function load() {
   catch (e) { console.error(e); state = blank(); state._loadError = e.message; }
 }
 let onSavedHook = null;
+let saveCount = 0;
 function save(opts = {}) {
+  saveCount++;
   try {
     const prev = localStorage.getItem(KEY);
     if (prev && !opts.noHistory) { const h = JSON.parse(localStorage.getItem(KEY + '-history') || '[]'); h.unshift({ at: new Date().toISOString(), data: prev }); localStorage.setItem(KEY + '-history', JSON.stringify(h.slice(0, 5))); }
