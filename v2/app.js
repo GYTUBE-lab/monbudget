@@ -125,7 +125,38 @@ function makeAccount(f) {
   if (opening !== null && isNaN(opening)) throw Error('Solde de départ incorrect.');
   if (!validDate(f.start)) throw Error('Date du solde incorrecte.');
   const debitDay = Math.min(31, Math.max(1, parseInt(f.debitDay, 10) || 10));
-  return { id: f.id || 'acc-' + uid(), name, bank: String(f.bank || '').trim().slice(0, 60), type: ['courant', 'epargne', 'especes'].includes(f.type) ? f.type : 'courant', card: ['immediate', 'differee', 'aucune'].includes(f.card) ? f.card : 'immediate', debitDay, opening, start: f.start, archived: !!f.archived };
+  return { id: f.id || 'acc-' + uid(), name, bank: String(f.bank || '').trim().slice(0, 60), type: ['courant', 'epargne', 'especes'].includes(f.type) ? f.type : 'courant', card: ['immediate', 'differee', 'aucune'].includes(f.card) ? f.card : 'immediate', debitDay, opening, start: f.start, archived: !!f.archived, match: String(f.match || '').replace(/\s+/g, ' ').trim().slice(0, 200) };
+}
+/* Virements entre mes comptes : mots qui désignent un compte dans les libellés de la banque */
+function accountKeywords(a) {
+  const k = String(a.match || '').split(/[,;]/).map(x => norm(x).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()).filter(x => x.length >= 3);
+  const n = norm(a.name).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (n.length >= 4 && !/^compte( principal| courant)?$/.test(n)) k.push(n);
+  return k;
+}
+function transferTarget(label, accId) {
+  const l = ' ' + norm(label).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ') + ' ';
+  for (const a of activeAccounts()) if (a.id !== accId && accountKeywords(a).some(k => l.includes(' ' + k + ' '))) return a.id;
+  return '';
+}
+/* Retrouve un côté de virement déjà saisi (à la main, ou par l'import de l'autre compte) */
+function findTransferLeg(accId, type, amount, date, used = new Set()) {
+  return state.transactions.filter(t => t.treatment === 'transfer' && t.account === accId && t.type === type && t.amount === amount && !t.bankLabel && !used.has(t.id) && Math.abs(new Date(t.date) - new Date(date)) <= 6 * 864e5)
+    .sort((a, b) => Math.abs(new Date(a.date) - new Date(date)) - Math.abs(new Date(b.date) - new Date(date)))[0] || null;
+}
+/* Transforme une opération (ex. importée) en virement entre mes comptes */
+function convertToTransfer(t, otherAcc) {
+  if (!otherAcc || otherAcc === t.account) throw Error('Choisissez l’autre compte.');
+  const otherType = t.type === 'income' ? 'expense' : 'income';
+  const leg = findTransferLeg(otherAcc, otherType, t.amount, t.date);
+  const from = t.type === 'expense' ? t.account : otherAcc, to = t.type === 'expense' ? otherAcc : t.account;
+  const transferId = leg?.transferId && !state.transactions.some(x => x.transferId === leg.transferId && x.id !== leg.id) ? leg.transferId : uid();
+  Object.assign(t, { category: SYSTEM.transfer, treatment: 'transfer', payment: 'transfer', transferId, note: 'De ' + accName(from) + ' vers ' + accName(to) });
+  delete t.subcategory; delete t.splits; delete t.budgetMonth; delete t.dueDate;
+  if (t.importId) t.bankLabel = t.label;
+  if (leg) { leg.transferId = transferId; return 'linked'; }
+  state.transactions.push({ id: uid(), transferId, account: otherAcc, type: otherType, date: t.date, amount: t.amount, label: t.label, category: SYSTEM.transfer, treatment: 'transfer', payment: 'transfer', note: t.note, _at: Date.now() });
+  return 'created';
 }
 
 /* ---------- Opérations ---------- */
@@ -323,7 +354,7 @@ function buildTx(f) {
     if (sum !== amount) throw Error('Le détail fait ' + money(sum) + ' au lieu de ' + money(amount) + '.');
     t.splits = f.splits; t.category = f.splits[0].category; t.subcategory = f.splits[0].subcategory || undefined;
   }
-  for (const k of ['recurringId', 'recurringDate', 'importId', 'groupId', 'treatment', 'transferId', 'chequeNumber']) if (f[k]) t[k] = f[k];
+  for (const k of ['recurringId', 'recurringDate', 'importId', 'groupId', 'treatment', 'transferId', 'chequeNumber', 'bankLabel']) if (f[k]) t[k] = f[k];
   return t;
 }
 function upsertTx(t) { const i = state.transactions.findIndex(x => x.id === t.id); if (i >= 0) state.transactions[i] = t; else state.transactions.push(t); }
@@ -449,7 +480,7 @@ function analyseCSV(text, accId) {
     if (isNaN(v) || v === 0) { skipped++; continue; }
     const label = (cLabel >= 0 ? r[cLabel] : '').replace(/\s+/g, ' ').trim() || 'Opération importée';
     const type = v > 0 ? 'income' : 'expense', amount = Math.abs(v);
-    const dup = state.transactions.some(t => t.account === accId && t.date === date && t.amount === amount && t.type === type && norm(t.label) === norm(label));
+    const dup = state.transactions.some(t => t.account === accId && t.date === date && t.amount === amount && t.type === type && (norm(t.label) === norm(label) || norm(t.bankLabel || '') === norm(label)));
     const g = guessCategory(label, type);
     const bankCat = cCat >= 0 ? (r[cCat] || '').trim() : '';
     const known = bankCat && state.categories.find(c => norm(c.name) === norm(bankCat));
@@ -461,13 +492,25 @@ function analyseCSV(text, accId) {
     if (it.dup) continue;
     const m = it.date.slice(0, 7);
     const cands = [...dueList(m, accId), ...dueList(addMonths(m, -1), accId), ...dueList(addMonths(m, 1), accId)]
-      .filter(d => !used.has(d.key) && (d.type === it.type || (d.type === 'transfer' && it.type === 'expense' && d.account === accId)) && Math.abs(new Date(d.date) - new Date(it.date)) <= 12 * 864e5 && (d.amount === it.amount || Math.abs(d.amount - it.amount) <= d.amount * 0.25) && labelScore(it.label, d.label) > 0)
+      .filter(d => !used.has(d.key) && (d.type === 'transfer'
+        ? ((it.type === 'expense' && d.account === accId) || (it.type === 'income' && d.toAccount === accId)) && Math.abs(new Date(d.date) - new Date(it.date)) <= 6 * 864e5 && d.amount === it.amount
+        : d.type === it.type && Math.abs(new Date(d.date) - new Date(it.date)) <= 12 * 864e5 && (d.amount === it.amount || Math.abs(d.amount - it.amount) <= d.amount * 0.25) && labelScore(it.label, d.label) > 0))
       .sort((a, b) => Math.abs(a.amount - it.amount) - Math.abs(b.amount - it.amount));
     if (cands[0]) { const d = cands[0]; used.add(d.key); it.due = d; it.category = d.category; it.subcategory = d.sched?.subcategory || d.tx?.subcategory || ''; }
   }
+  /* Virements entre mes comptes : déjà saisis (à la main ou import de l'autre compte), ou reconnus par les mots du compte */
+  const usedLegs = new Set();
+  for (const it of items) {
+    if (it.dup || it.due) continue;
+    const leg = findTransferLeg(accId, it.type, it.amount, it.date, usedLegs);
+    const other = leg && state.transactions.find(x => x.transferId === leg.transferId && x.id !== leg.id);
+    if (leg) { usedLegs.add(leg.id); it.leg = leg; it.category = SYSTEM.transfer; it.transferAcc = other?.account || ''; continue; }
+    const to = transferTarget(it.label, accId);
+    if (to) { it.transferAcc = to; it.category = SYSTEM.transfer; it.subcategory = ''; }
+  }
   /* Repère le débit global de la carte différée (déjà compté via les achats) */
   if (isDeferredAcc(acc)) for (const it of items) {
-    if (it.type !== 'expense' || it.dup || it.due) continue;
+    if (it.type !== 'expense' || it.dup || it.due || it.transferAcc || it.leg) continue;
     const near = cardDues(it.date.slice(0, 7), accId).concat(cardDues(addMonths(it.date.slice(0, 7), -1), accId)).find(d => Math.abs(d.amount - it.amount) <= 1 && Math.abs(new Date(d.date) - new Date(it.date)) <= 8 * 864e5);
     if (near) { it.settlement = true; it.category = SYSTEM.settlement; it.note = 'Débit global de la carte (' + near.count + ' achats déjà saisis)'; }
   }
@@ -481,6 +524,12 @@ function commitImport(name, accId, items) {
       const d = it.due;
       if (d.tx) { batch.restore.push(JSON.parse(JSON.stringify(d.tx))); delete d.tx.status; d.tx.amount = it.amount; d.tx.date = it.date; d.tx.importId = batch.id; if (d.tx.payment === 'deferred') d.tx.dueDate = dueDateFor(accountById(d.tx.account), it.date); }
       else { const t = confirmDue(d, it.amount, it.date); const all = t.transferId ? state.transactions.filter(x => x.transferId === t.transferId) : [t]; all.forEach(x => { x.importId = batch.id; batch.ids.push(x.id); }); }
+      continue;
+    }
+    if (it.leg) { batch.restore.push(JSON.parse(JSON.stringify(it.leg))); it.leg.bankLabel = it.label; it.leg.date = it.date; continue; }
+    if (it.transferAcc) {
+      const ts = it.type === 'expense' ? createTransfer(accId, it.transferAcc, it.date, it.amount, it.label) : createTransfer(it.transferAcc, accId, it.date, it.amount, it.label);
+      ts.forEach(x => { x.importId = batch.id; batch.ids.push(x.id); if (x.account === accId) x.bankLabel = it.label; });
       continue;
     }
     const t = { id: uid(), account: accId, type: it.type, date: it.date, amount: it.amount, label: it.label, category: it.category, payment: it.type === 'income' ? 'transfer' : 'directDebit', importId: batch.id, _at: Date.now() };
