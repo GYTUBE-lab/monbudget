@@ -407,7 +407,13 @@ function txForm(type, opts = {}) {
   const readBuyDates = () => { const e = sf().elements; (F.buys || []).forEach((b, i) => { if (e['bd' + i]) b.date = e['bd' + i].value; }); };
   const buyStatus = () => { const sum = (F.buys || []).reduce((a, b) => a + (b.amount || 0), 0), total = parseAmount(val('amount')) || 0;
     return !total ? ['', 'Total des achats ' + money(sum)] : sum === total ? ['pos', 'Total juste ✓'] : sum < total ? ['neg', 'Reste à détailler ' + money(total - sum)] : ['neg', 'Trop : ' + money(sum - total)]; };
-  const updBuySum = () => { const el = $('#buySum'); if (!el) return; const [c, txt] = buyStatus(); el.className = 'b ' + c; el.textContent = txt; };
+  const autoTotal = () => { // montant en haut = somme des achats, tant qu'il n'a pas été tapé à la main
+    if (!F.buys || !sf().elements.buys?.checked) return;
+    const inp = sf().elements.amount; if (F.amtAuto === undefined) F.amtAuto = !(parseAmount(inp.value) > 0);
+    if (!F.amtAuto) return;
+    const sum = F.buys.reduce((a, b) => a + (b.amount || 0), 0); inp.value = sum ? amountInput(sum) : '';
+  };
+  const updBuySum = () => { autoTotal(); const el = $('#buySum'); if (!el) return; const [c, txt] = buyStatus(); el.className = 'b ' + c; el.textContent = txt; };
   const drawBuys = () => {
     const box = $('#buyBox'); if (!box) return;
     const tog = $('#splitTog'); if (tog) tog.style.display = sf().elements.buys.checked ? 'none' : '';
@@ -415,6 +421,7 @@ function txForm(type, opts = {}) {
     readBuyDates();
     if (!F.buys?.length) { const d = val('date') || today(); F.buys = [0, 1].map(() => ({ date: d, label: '', category: 'Alimentation', amount: 0 })); }
     const deferred = isDeferredAcc(accountById(val('account'))) && getPressed('pay') === 'card';
+    autoTotal();
     const [c, txt] = buyStatus();
     box.innerHTML = `<p class="tiny" style="margin:0">Montant en haut = total débité. Chaque achat devient une opération à sa propre date${deferred ? ', payée par ce débit de carte (date du débit : « ' + esc(dateFR(val('date'))) + ' », modifiable en bas)' : ''}. Ensuite, vous pourrez ouvrir un achat et <b>détailler son ticket</b>.</p>`
       + F.buys.map((b, i) => `<div class="split-card"><div class="grid2" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto 30px;gap:8px;align-items:end">${dateField('bd' + i, b.date, 'date', 'Achat ' + (i + 1), false, true)}<label class="f">Montant<input data-input="buy-amt" data-i="${i}" inputmode="decimal" value="${b.amount ? amountInput(b.amount) : ''}" placeholder="0,00"></label><button type="button" class="tkbtn" data-act="buy-tk" data-i="${i}" aria-pressed="${!!b.tkOn}" aria-label="Détailler le ticket de l’achat ${i + 1}">Ticket${b.tkOn ? ' ✓' : ''}</button><button type="button" class="x" data-act="buy-del" data-i="${i}" aria-label="Retirer l’achat">${ic('x', 14)}</button></div><input class="split-lbl" data-input="buy-lbl" data-i="${i}" value="${esc(b.label)}" placeholder="Où / quoi ? Ex. Leclerc, encre imprimante" aria-label="Achat ${i + 1} : où / quoi">${b.tkOn ? tkHTML(b, i) : `<select data-change="buy-cat" data-i="${i}" class="in" style="margin-top:6px" aria-label="Catégorie achat ${i + 1}">${catOptions(b.category, 'expense')}</select>`}</div>`).join('')
@@ -514,7 +521,7 @@ function txForm(type, opts = {}) {
     readBuyDates(); const e = sf().elements;
     const has = e.amount.value.trim() || e.label.value.trim() || (F.buys || []).some(b => b.amount || b.label) || (F.splits || []).some(l => l.label);
     if (!has) return;
-    setDraft({ type, at: Date.now(), amount: e.amount.value, label: e.label.value, category: e.category.value, subcategory: e.subcategory.value, note: e.note.value, account: e.account.value, date: e.date.value, pay: getPressed('pay'), splitOn: !!e.split?.checked, buysOn: !!e.buys?.checked, splits: F.splits, buys: F.buys, autoFirst: F.autoFirst });
+    setDraft({ type, at: Date.now(), amount: e.amount.value, label: e.label.value, category: e.category.value, subcategory: e.subcategory.value, note: e.note.value, account: e.account.value, date: e.date.value, pay: getPressed('pay'), splitOn: !!e.split?.checked, buysOn: !!e.buys?.checked, splits: F.splits, buys: F.buys, autoFirst: F.autoFirst, amtAuto: F.amtAuto });
     toast('Saisie gardée en brouillon');
   };
   openSheet(title, body, foot, acts, { focus: isEdit || opts.draft ? null : '[name=amount]', onClose });
@@ -522,13 +529,13 @@ function txForm(type, opts = {}) {
     for (const k of ['amount', 'label', 'category', 'subcategory', 'note', 'account', 'date']) if (e[k] && d[k] != null) e[k].value = d[k];
     const db = e.date && sf().querySelector(`[data-act="pick-date"][data-name="date"]`); if (db) db.querySelector(".dv").textContent = pickLabel(d.date, "date");
     if (d.pay) pressed('pay', d.pay);
-    F.splits = d.splits || null; F.buys = d.buys || null; if (d.autoFirst === false) F.autoFirst = false;
+    F.splits = d.splits || null; F.buys = d.buys || null; if (d.autoFirst === false) F.autoFirst = false; F.amtAuto = d.amtAuto;
     if (e.split) e.split.checked = !!d.splitOn; if (e.buys) e.buys.checked = !!d.buysOn;
     if (d.buysOn) { const dt = sf().querySelector('details.more'); if (dt) dt.open = true; }
     sf().dataset.dirty = '1'; }
   sheet.inputs = {
     label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = '· devinée d’après « ' + val('label') + ' »'; drawCats(); } } },
-    amount: () => { updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
+    amount: () => { if (F.buys) F.amtAuto = !(parseAmount(val('amount')) > 0); updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
     'split-lbl': el => { F.splits[Number(el.dataset.i)].label = el.value; },
     'buy-amt': el => { const i = Number(el.dataset.i), b = F.buys[i]; b.amount = parseAmount(el.value) || 0; updBuySum(); tkAutoFill(b, i); tkUpd(i); },
     'tk-amt': el => { const i = Number(el.dataset.i), j = Number(el.dataset.j), b = F.buys[i]; b.tk[j].amount = parseAmount(el.value) || 0; if (j === 0) b.tkAuto = false; else tkAutoFill(b, i); tkUpd(i); },
