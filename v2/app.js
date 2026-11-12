@@ -86,7 +86,7 @@ function validate(s) {
     if (!ids.has(t.account)) throw Error('Opération liée à un compte inconnu : ' + t.label);
     if (t.payment === 'deferred' && !validDate(t.dueDate)) throw Error('Achat différé sans date de débit : ' + t.label);
   }
-  for (const r of s.schedules) if (!r || typeof r.id !== 'string' || !Number.isSafeInteger(r.amount) || !validMonth(r.start) || !ids.has(r.account)) throw Error('Échéance invalide : ' + (r?.label || '?'));
+  for (const r of s.schedules) if (!r || typeof r.id !== 'string' || !Number.isSafeInteger(r.amount) || !validMonth(r.start) || !ids.has(r.account) || (r.type === 'transfer' && !ids.has(r.toAccount))) throw Error('Échéance invalide : ' + (r?.label || '?'));
   for (const name of [...new Set([...s.transactions.flatMap(t => [t.category, ...(t.splits || []).map(l => l.category)]), ...s.schedules.map(r => r.category)])])
     if (name && !s.categories.some(c => c.name === name)) s.categories.push({ name, group: guessGroup(name), kind: 'out', subs: [], hidden: false });
   return s;
@@ -215,19 +215,24 @@ function occurrences(s, month) {
   if (s.custom?.length) return s.custom.filter(x => x.date.startsWith(month)).map(x => ({ date: x.date, amount: x.amount }));
   if (month < s.start || (s.end && month > s.end)) return [];
   if ((monthIndex(month) - monthIndex(s.start)) % (s.every || 1) !== 0) return [];
-  return [{ date: clampDay(month, s.day), amount: s.amount }];
+  return [...new Set(schedDays(s).map(d => clampDay(month, d)))].map(date => ({ date, amount: s.amount }));
 }
-const isDone = (s, date) => state.transactions.some(t => t.recurringId === s.id && (t.recurringDate || t.date).slice(0, 7) === date.slice(0, 7) && !isPlanned(t));
-const plannedFor = (s, date) => state.transactions.find(t => t.recurringId === s.id && (t.recurringDate || t.date).slice(0, 7) === date.slice(0, 7) && isPlanned(t));
+const schedDays = s => (s.days?.length ? s.days : [s.day || 1]).map(Number).sort((a, b) => a - b);
+const daysLabel = s => { const d = schedDays(s); return d.length === 1 ? 'le ' + d[0] : 'les ' + d.slice(0, -1).join(', ') + ' et ' + d[d.length - 1]; };
+/* Une opération correspond à une occurrence : même mois si un seul jour, même date sinon */
+const sameOcc = (s, t, date) => t.recurringId === s.id && (schedDays(s).length > 1 && !s.custom?.length ? (t.recurringDate || t.date) === date : (t.recurringDate || t.date).slice(0, 7) === date.slice(0, 7)) && (s.type !== 'transfer' || t.type === 'expense');
+const isDone = (s, date) => state.transactions.some(t => sameOcc(s, t, date) && !isPlanned(t));
+const plannedFor = (s, date) => state.transactions.find(t => sameOcc(s, t, date) && isPlanned(t));
+const isSkipped = (s, date) => (s.skip || []).includes(date) || ((s.skip || []).includes(date.slice(0, 7)) && schedDays(s).length === 1);
 /* Liste de ce qui reste à passer dans le mois */
 function dueList(month, acc = '') {
   const out = [];
   for (const s of state.schedules) {
-    if (s.paused || (acc && s.account !== acc)) continue;
+    if (s.paused || (acc && s.account !== acc && s.toAccount !== acc)) continue;
     for (const o of occurrences(s, month)) {
-      if ((s.skip || []).includes(month) || isDone(s, o.date)) continue;
+      if (isSkipped(s, o.date) || isDone(s, o.date)) continue;
       const p = plannedFor(s, o.date);
-      out.push({ key: 's:' + s.id + ':' + o.date, sched: s, tx: p, date: p?.date || o.date, amount: p?.amount || o.amount, type: s.type, label: s.label, account: s.account, category: s.category });
+      out.push({ key: 's:' + s.id + ':' + o.date, sched: s, tx: p, date: p?.date || o.date, amount: p?.amount || o.amount, type: s.type, label: s.label, account: s.account, toAccount: s.toAccount, category: s.type === 'transfer' ? SYSTEM.transfer : s.category });
     }
   }
   for (const t of state.transactions) if (isPlanned(t) && !t.recurringId && t.date.startsWith(month) && (!acc || t.account === acc))
@@ -259,6 +264,7 @@ function forecast(month, acc = '') {
   const has = id => { const a = accountById(id); return a && a.opening != null && !a.archived && (!acc || id === acc); };
   for (let m = cur; m <= month; m = addMonths(m, 1)) {
     for (const d of dueList(m)) {
+      if (d.type === 'transfer') { if (d.date <= end) { if (has(d.account)) total -= d.amount; if (has(d.toAccount)) total += d.amount; } continue; }
       if (!has(d.account)) continue;
       const s = d.sched, a = accountById(d.account);
       const sign = d.type === 'income' ? 1 : -1;
@@ -305,13 +311,17 @@ function deleteTx(id) {
 function createTransfer(from, to, date, amount, label) {
   if (!from || !to || from === to) throw Error('Choisissez deux comptes différents.');
   if (!validDate(date) || !Number.isSafeInteger(amount) || amount <= 0) throw Error('Montant ou date incorrect.');
-  const transferId = uid();
-  for (const [account, type] of [[from, 'expense'], [to, 'income']])
-    state.transactions.push({ id: uid(), transferId, account, type, date, amount, label: label || 'Virement entre mes comptes', category: SYSTEM.transfer, treatment: 'transfer', payment: 'transfer', note: 'De ' + accName(from) + ' vers ' + accName(to), _at: Date.now() });
+  const transferId = uid(), out = [];
+  for (const [account, type] of [[from, 'expense'], [to, 'income']]) {
+    const t = { id: uid(), transferId, account, type, date, amount, label: label || 'Virement entre mes comptes', category: SYSTEM.transfer, treatment: 'transfer', payment: 'transfer', note: 'De ' + accName(from) + ' vers ' + accName(to), _at: Date.now() };
+    state.transactions.push(t); out.push(t);
+  }
+  return out;
 }
 function confirmDue(d, amount, date) {
   if (d.tx) { d.tx.status = undefined; delete d.tx.status; d.tx.amount = amount; if (date) { d.tx.date = date; if (d.tx.payment === 'deferred') d.tx.dueDate = dueDateFor(accountById(d.tx.account), date); } return d.tx; }
   const s = d.sched;
+  if (s.type === 'transfer') { const ts = createTransfer(s.account, s.toAccount, date || d.date, amount, s.label); ts.forEach(t => { t.recurringId = s.id; t.recurringDate = d.date; }); return ts[0]; }
   const t = buildTx({ account: s.account, type: s.type, date: date || d.date, amount, label: s.label, category: s.category, subcategory: s.subcategory, payment: s.payment || 'directDebit', splits: s.splits?.length && s.amount === amount ? s.splits : undefined, recurringId: s.id, recurringDate: d.date, budgetMonth: s.nextMonthBudget ? addMonths(d.date.slice(0, 7), 1) : undefined });
   state.transactions.push(t); return t;
 }
@@ -426,7 +436,7 @@ function analyseCSV(text, accId) {
     if (it.dup) continue;
     const m = it.date.slice(0, 7);
     const cands = [...dueList(m, accId), ...dueList(addMonths(m, -1), accId), ...dueList(addMonths(m, 1), accId)]
-      .filter(d => !used.has(d.key) && d.type === it.type && Math.abs(new Date(d.date) - new Date(it.date)) <= 12 * 864e5 && (d.amount === it.amount || Math.abs(d.amount - it.amount) <= d.amount * 0.25) && labelScore(it.label, d.label) > 0)
+      .filter(d => !used.has(d.key) && (d.type === it.type || (d.type === 'transfer' && it.type === 'expense' && d.account === accId)) && Math.abs(new Date(d.date) - new Date(it.date)) <= 12 * 864e5 && (d.amount === it.amount || Math.abs(d.amount - it.amount) <= d.amount * 0.25) && labelScore(it.label, d.label) > 0)
       .sort((a, b) => Math.abs(a.amount - it.amount) - Math.abs(b.amount - it.amount));
     if (cands[0]) { const d = cands[0]; used.add(d.key); it.due = d; it.category = d.category; it.subcategory = d.sched?.subcategory || d.tx?.subcategory || ''; }
   }
@@ -445,7 +455,7 @@ function commitImport(name, accId, items) {
     if (it.due) {
       const d = it.due;
       if (d.tx) { batch.restore.push(JSON.parse(JSON.stringify(d.tx))); delete d.tx.status; d.tx.amount = it.amount; d.tx.date = it.date; d.tx.importId = batch.id; if (d.tx.payment === 'deferred') d.tx.dueDate = dueDateFor(accountById(d.tx.account), it.date); }
-      else { const t = confirmDue(d, it.amount, it.date); t.importId = batch.id; batch.ids.push(t.id); }
+      else { const t = confirmDue(d, it.amount, it.date); const all = t.transferId ? state.transactions.filter(x => x.transferId === t.transferId) : [t]; all.forEach(x => { x.importId = batch.id; batch.ids.push(x.id); }); }
       continue;
     }
     const t = { id: uid(), account: accId, type: it.type, date: it.date, amount: it.amount, label: it.label, category: it.category, payment: it.type === 'income' ? 'transfer' : 'directDebit', importId: batch.id, _at: Date.now() };

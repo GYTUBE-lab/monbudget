@@ -110,14 +110,14 @@ dialog.sheet::backdrop{background:rgba(8,36,41,.55)}
 .sheet-in{display:flex;flex-direction:column;max-height:94dvh}
 .sheet-head{display:flex;align-items:center;gap:6px;padding:12px 12px 8px}
 .sheet-head h2{flex:1;font-size:19px;padding-left:6px}
-.sheet-body{overflow:auto;padding:4px 20px 16px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
+.sheet-body{overflow-y:auto;overflow-x:hidden;padding:4px 20px 16px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
 .sheet-foot{padding:10px 20px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:10px}
 .x{width:44px;height:44px;border-radius:50%;border:0;background:var(--bg);display:grid;place-items:center;color:var(--ink);flex-shrink:0}
 label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700}
 .f input,.f select,.f textarea,input.in,select.in{height:48px;border:1px solid var(--field);border-radius:12px;padding:0 12px;font-size:16px;font-weight:500;background:#fff;width:100%;min-width:0}
 .f textarea{height:auto;min-height:70px;padding:10px 12px}
 .f input:focus,.f select:focus,input.in:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal)}
-.amount-in{border:0!important;text-align:center;font:700 44px Outfit,sans-serif!important;height:64px!important;color:var(--neg);background:transparent!important;outline:none!important}
+.amount-in{width:100%;border:0!important;text-align:center;font:700 44px Outfit,sans-serif!important;height:64px!important;color:var(--neg);background:transparent!important;outline:none!important}
 .amount-in.inc{color:var(--pos)}
 fieldset{border:0;margin:0;padding:0;min-width:0}
 legend{font-size:13px;font-weight:700;padding:0 0 8px}
@@ -136,7 +136,27 @@ details.more[open] summary svg{transform:rotate(180deg)}
 details.more>div{display:flex;flex-direction:column;gap:12px;padding:6px 0 4px}
 .toggle{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14.5px}
 .toggle input{width:22px;height:22px;accent-color:var(--teal);flex-shrink:0}
-.split-line{display:grid;grid-template-columns:1fr 110px 36px;gap:6px;align-items:center}
+.split-line{display:grid;grid-template-columns:minmax(0,1fr) 100px 36px;gap:6px;align-items:center}
+.split-card{background:var(--bg);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.split-lbl{height:40px;border:1px solid var(--field);border-radius:10px;padding:0 10px;font-size:15px;background:#fff;width:100%;min-width:0}
+.ticket{padding:0 0 10px 12px;margin-top:-6px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;border-left:3px solid var(--line)}
+.datebtn{height:48px;width:100%;border:1px solid var(--field);border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;font-size:15.5px;font-weight:500;text-align:left;color:var(--ink)}
+.datebtn .dv{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.datebtn svg{flex-shrink:0;color:var(--teal)}
+dialog.picker{border:0;padding:0;border-radius:22px;width:min(360px,94vw);background:#fff;color:var(--ink)}
+dialog.picker::backdrop{background:rgba(8,36,41,.45)}
+.pk{padding:14px;display:flex;flex-direction:column;gap:10px}
+.pk-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.pk-title{border:0;background:var(--bg);border-radius:12px;min-height:44px;padding:0 14px;font:700 17px Outfit,sans-serif;display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
+span.pk-title{background:none}
+.pk-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.pk-grid.m{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pk-wd{text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding:4px 0}
+.pk-d{min-height:42px;border:0;border-radius:12px;background:transparent;font-size:15px;font-weight:600;color:var(--ink)}
+.pk-grid.m .pk-d{min-height:52px;background:var(--bg)}
+.pk-d.today{box-shadow:inset 0 0 0 2px var(--teal)}
+.pk-d.on{background:var(--teal)!important;color:#fff}
+.pk-foot{display:flex;gap:8px;flex-wrap:wrap}.pk-foot .btn{flex:1;min-height:44px}
 .split-line select,.split-line input{height:42px;border:1px solid var(--field);border-radius:10px;padding:0 8px;font-size:15px;min-width:0;background:#fff}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav) + 20px + env(safe-area-inset-bottom));background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-weight:600;font-size:14px;z-index:50;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
 #toast.on{opacity:1}
@@ -160,6 +180,7 @@ table.t td{border-top:1px solid var(--line);padding:9px 0;text-align:right}
 <div id="app" class="app"><div class="loading">Chargement…</div></div>
 <nav class="tabs" id="tabs" aria-label="Navigation principale" hidden></nav>
 <dialog class="sheet" id="sheet"></dialog>
+<dialog class="picker" id="picker" aria-label="Calendrier"></dialog>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="../config.js"></script>
 <script src="app.js"></script>

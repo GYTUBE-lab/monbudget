@@ -10,7 +10,7 @@ const IC = {
   tag: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', house: '<path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/>',
   transfer: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>', leaf: '<path d="M7 21c0-5 2-9 5-11M12 10c4 0 7-3 7-7-4 0-7 3-7 7z"/>', help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01"/>',
   phone: '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>', search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-  minus: '<path d="M5 12h14"/>', mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
+  minus: '<path d="M5 12h14"/>', edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>', mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
 };
 const ic = (n, s, w) => I(IC[n], s, w);
 
@@ -136,7 +136,7 @@ function dueView() {
   const f = m >= cur ? forecast(m, acc) : null, hold = holdings(t0, acc);
   let h = `<header class="top flat"><div class="top-row"><h1>Échéances</h1>${showAccounts() ? `<select data-change="acc" aria-label="Compte" style="max-width:52%;flex:0 1 auto">${accOptions(acc, true)}</select>` : ''}</div><div class="ctrls">${monthNav()}</div>`;
   h += `<div class="grid2"><div style="background:var(--teal-d);border-radius:14px;padding:10px 12px"><div class="tiny" style="color:#cfe7e6">Solde aujourd’hui</div><div class="num b" style="font-size:20px">${moneyR(hold.total)}</div></div><div style="background:#fff;color:var(--ink);border-radius:14px;padding:10px 12px"><div class="tiny">${f ? 'Fin du mois prévue' : 'Mois passé'}</div><div class="num b" style="font-size:20px">${f ? moneyR(f.total) : '—'}</div></div></div></header><main style="padding-top:14px">`;
-  const dueRow = (d, canCheck) => { const ds = dayShort(d.date); return `<div class="row-item"><span class="day"><b>${ds.d}</b>${ds.m}</span><button class="grow" data-act="due-open" data-key="${esc(d.key)}" style="border:0;background:none;text-align:left;padding:0;min-height:44px"><span class="t" style="display:block">${esc(d.label)}</span><span class="s" style="display:block">${d.sched ? payLabel(d.sched.payment) : 'Prévue'}${showAccounts() ? ' · ' + esc(accName(d.account)) : ''}${canCheck ? '' : ' · ' + (d.type === 'income' ? '+' : '−') + money(d.amount)}</span></button>${canCheck ? `<span class="amt ${d.type === 'income' ? 'pos' : 'neg'}" style="margin-right:2px">${d.type === 'income' ? '+' : '−'}${moneyR(d.amount)}</span><button class="check" data-act="due-ok" data-key="${esc(d.key)}" aria-label="Confirmer ${esc(d.label)}">${ic('check', 22, 2.6)}</button>` : ''}</div>`; };
+  const dueRow = (d, canCheck) => { const ds = dayShort(d.date); return `<div class="row-item"><span class="day"><b>${ds.d}</b>${ds.m}</span><button class="grow" data-act="due-open" data-key="${esc(d.key)}" style="border:0;background:none;text-align:left;padding:0;min-height:44px"><span class="t" style="display:block">${esc(d.label)}</span><span class="s" style="display:block">${d.type === 'transfer' ? 'Virement → ' + esc(accName(d.toAccount)) : (d.sched ? payLabel(d.sched.payment) : 'Prévue') + (showAccounts() ? ' · ' + esc(accName(d.account)) : '')}${canCheck ? '' : ' · ' + (d.type === 'income' ? '+' : d.type === 'transfer' ? '⇄ ' : '−') + money(d.amount)}</span></button>${canCheck ? `<span class="amt ${d.type === 'income' ? 'pos' : d.type === 'transfer' ? '' : 'neg'}" style="margin-right:2px">${d.type === 'income' ? '+' : d.type === 'transfer' ? '⇄ ' : '−'}${moneyR(d.amount)}</span><button class="check" data-act="due-ok" data-key="${esc(d.key)}" aria-label="Confirmer ${esc(d.label)}">${ic('check', 22, 2.6)}</button>` : ''}</div>`; };
   if (past.length) h += `<div class="sec">Passées ? Touchez ✓ pour confirmer</div><section class="card list">${past.map(d => dueRow(d, true)).join('')}</section>`;
   if (next.length) h += `<div class="sec">À venir</div><section class="card list">${next.map(d => dueRow(d, false)).join('')}</section>`;
   for (const c of cards) { const ds = dayShort(c.date); h += `<button class="card row-item" data-act="page" data-page="card" style="background:var(--coral-l);border-radius:18px;padding:12px 14px"><span class="day" style="color:#7c2d12"><b style="color:#7c2d12">${ds.d}</b>${ds.m}</span><span class="grow"><span class="t" style="display:block">Carte différée${showAccounts() ? ' · ' + esc(accName(c.account)) : ''}</span><span class="s" style="display:block;color:#7c2d12">${c.date <= t0 ? 'Débitée' : 'Calculée seule'} · ${c.count} achat${c.count > 1 ? 's' : ''} du mois précédent</span></span><span class="amt neg">−${money(c.amount)}</span></button>`; }
@@ -180,7 +180,7 @@ const PAGES = {
     for (const a of accs) {
       const pend = pendingDeferred(a.id), byDue = new Map(); pend.forEach(t => byDue.set(t.dueDate, (byDue.get(t.dueDate) || 0) + t.amount));
       h += `<section class="card hero"><div class="label">À débiter · ${esc(a.name)}</div><div class="big num neg">${money(pend.reduce((s, t) => s + t.amount, 0))}</div>${[...byDue].sort().map(([d, v]) => `<div class="head split"><span>Débit du ${dateFR(d)}</span><span class="b">${money(v)}</span></div>`).join('')}<p class="tiny" style="margin:10px 0 0">Débit automatique le ${a.debitDay} de chaque mois. Rien à saisir : chaque achat « Carte » est ajouté au bon débit. Si vous importez le relevé, la ligne du débit global est reconnue et n’est pas comptée deux fois.<br><b>Un montant déjà débité ?</b> Touchez-le ci-dessous et choisissez « Carte immédiate ».</p></section>`;
-      h += `<div class="sec">${pend.length} achat${pend.length > 1 ? 's' : ''} en attente</div><section class="card list">${pend.length ? pend.map(t => txRow(t, true)).join('') : '<p class="empty">Aucun achat en attente.</p>'}</section>`;
+      h += `<div class="sec">${pend.length} achat${pend.length > 1 ? 's' : ''} en attente</div><section class="card list">${pend.length ? pend.map(t => txRow(t, true) + (t.splits?.length ? `<div class="ticket">${t.splits.map(l => `<div class="head"><span>${esc(l.label && l.label !== l.category ? l.label + ' · ' : '')}${esc(l.category)}</span><span>${money(l.amount)}</span></div>`).join('')}<button class="link" data-act="detail-tx" data-id="${esc(t.id)}">Modifier le détail</button></div>` : `<div class="ticket"><button class="link" data-act="detail-tx" data-id="${esc(t.id)}">${ic('list', 14)} Détailler ce ticket</button></div>`)).join('') : '<p class="empty">Aucun achat en attente.</p>'}</section>`;
     }
     return h + '</main>';
   },
@@ -253,6 +253,68 @@ function welcome() {
   ${state._loadError ? `<p class="alert c">Les données v2 de cet appareil n’ont pas pu être lues (${esc(state._loadError)}).</p>` : ''}</main></div>`;
 }
 
+/* ---------- Calendrier (dates, mois, jours du mois) ---------- */
+const WD = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+function pickLabel(v, mode, optional) {
+  if (!v) return optional ? (mode === 'month' ? 'Sans fin' : 'Aucune') : 'Choisir…';
+  if (mode === 'month') return monthLabel(v);
+  if (mode === 'days') return daysLabel({ days: v.split(',').map(Number) });
+  const d = new Date(v + 'T12:00:00'); return (v === today() ? 'Aujourd’hui, ' : '') + d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+function dateField(name, value, mode, label, optional = false) {
+  return `<label class="f">${label}<input type="hidden" name="${name}" value="${esc(value || '')}"><button type="button" class="datebtn" data-act="pick-date" data-name="${name}" data-mode="${mode}" data-optional="${optional ? 1 : ''}"><span class="dv">${esc(pickLabel(value, mode, optional))}</span>${ic('cal', 18)}</button></label>`;
+}
+const P = {};
+function openPicker(btn) {
+  const root = btn.closest('form') || btn.closest('.welcome'); const input = root.querySelector(`input[name="${btn.dataset.name}"]`);
+  const mode = btn.dataset.mode, v = input.value, base = (mode === 'date' && validDate(v)) ? v : (mode === 'month' && validMonth(v)) ? v + '-01' : today();
+  Object.assign(P, { btn, input, mode, optional: !!btn.dataset.optional, y: Number(base.slice(0, 4)), m: Number(base.slice(5, 7)), view: mode === 'month' ? 'months' : mode === 'days' ? 'days31' : 'days', sel: mode === 'days' ? new Set(v.split(',').filter(Boolean).map(Number)) : null });
+  drawPicker(); const d = $('#picker'); if (!d.open) d.showModal();
+}
+function drawPicker() {
+  const t0 = today(), v = P.input.value; let head = '', grid = '', foot = '';
+  const nav = (l, mid, r) => `<div class="pk-head"><button type="button" class="x" data-p="${l}" aria-label="Précédent">${ic('l', 18, 2.4)}</button>${mid}<button type="button" class="x" data-p="${r}" aria-label="Suivant">${ic('r', 18, 2.4)}</button></div>`;
+  if (P.view === 'days') {
+    head = nav('m-1', `<button type="button" class="pk-title" data-p="to-months">${esc(monthLabel(P.y + '-' + pad(P.m)))} ${ic('down', 16)}</button>`, 'm+1');
+    const first = (new Date(P.y, P.m - 1, 1).getDay() + 6) % 7, n = lastDay(P.y + '-' + pad(P.m));
+    grid = `<div class="pk-grid">${WD.map(w => `<span class="pk-wd">${w}</span>`).join('')}${'<span></span>'.repeat(first)}${Array.from({ length: n }, (_, i) => { const d = P.y + '-' + pad(P.m) + '-' + pad(i + 1); return `<button type="button" class="pk-d${d === v ? ' on' : ''}${d === t0 ? ' today' : ''}" data-p="day" data-v="${d}">${i + 1}</button>`; }).join('')}</div>`;
+    foot = `<button type="button" class="btn ghost" data-p="today">Aujourd’hui</button>${P.optional ? '<button type="button" class="btn ghost" data-p="clear">Effacer</button>' : ''}`;
+  } else if (P.view === 'months') {
+    head = nav('y-1', `<button type="button" class="pk-title" data-p="to-years">${P.y} ${ic('down', 16)}</button>`, 'y+1');
+    grid = `<div class="pk-grid m">${MONTHS_S.map((l, i) => { const ym = P.y + '-' + pad(i + 1); const on = P.mode === 'month' ? ym === v : (validDate(v) && v.startsWith(ym)); return `<button type="button" class="pk-d${on ? ' on' : ''}${ym === thisMonth() ? ' today' : ''}" data-p="month" data-v="${i + 1}">${l}</button>`; }).join('')}</div>`;
+    foot = P.mode === 'month' ? `<button type="button" class="btn ghost" data-p="this-month">Ce mois-ci</button>${P.optional ? '<button type="button" class="btn ghost" data-p="clear">Sans fin</button>' : ''}` : '';
+  } else if (P.view === 'years') {
+    const y0 = P.y - 5; head = nav('y-12', `<span class="pk-title">${y0} – ${y0 + 11}</span>`, 'y+12');
+    grid = `<div class="pk-grid m">${Array.from({ length: 12 }, (_, i) => y0 + i).map(y => `<button type="button" class="pk-d${y === P.y ? ' on' : ''}${y === new Date().getFullYear() ? ' today' : ''}" data-p="year" data-v="${y}">${y}</button>`).join('')}</div>`;
+  } else {
+    head = `<div class="pk-head"><span class="pk-title">Jours du mois</span></div><p class="tiny" style="margin:0 0 8px;text-align:center">Touchez un ou plusieurs jours (ex. le 1 et le 28).</p>`;
+    grid = `<div class="pk-grid">${Array.from({ length: 31 }, (_, i) => `<button type="button" class="pk-d${P.sel.has(i + 1) ? ' on' : ''}" data-p="tog" data-v="${i + 1}" aria-pressed="${P.sel.has(i + 1)}">${i + 1}</button>`).join('')}</div><p class="tiny" style="margin:8px 0 0;text-align:center">Le 29, 30 ou 31 tombe le dernier jour des mois plus courts.</p>`;
+    foot = `<button type="button" class="btn full" data-p="ok-days" ${P.sel.size ? '' : 'disabled style="opacity:.5"'}>Valider${P.sel.size ? ' · ' + esc(daysLabel({ days: [...P.sel] })) : ''}</button>`;
+  }
+  $('#picker').innerHTML = `<div class="pk">${head}${grid}<div class="pk-foot">${foot}<button type="button" class="btn ghost" data-p="cancel">Annuler</button></div></div>`;
+}
+function setPicked(v) {
+  P.input.value = v; P.btn.querySelector('.dv').textContent = pickLabel(v, P.mode, P.optional);
+  $('#picker').close(); P.input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+$('#picker').addEventListener('click', e => {
+  if (e.target === $('#picker')) { $('#picker').close(); return; }
+  const b = e.target.closest('[data-p]'); if (!b) return; const a = b.dataset.p, v = b.dataset.v;
+  const mv = n => { const d = new Date(P.y, P.m - 1 + n, 1); P.y = d.getFullYear(); P.m = d.getMonth() + 1; };
+  if (a === 'm-1') mv(-1); else if (a === 'm+1') mv(1); else if (a === 'y-1') P.y--; else if (a === 'y+1') P.y++; else if (a === 'y-12') P.y -= 12; else if (a === 'y+12') P.y += 12;
+  else if (a === 'to-months') P.view = 'months'; else if (a === 'to-years') P.view = 'years';
+  else if (a === 'year') { P.y = Number(v); P.view = 'months'; }
+  else if (a === 'month') { P.m = Number(v); if (P.mode === 'month') return setPicked(P.y + '-' + pad(P.m)); P.view = 'days'; }
+  else if (a === 'day') return setPicked(v);
+  else if (a === 'today') return setPicked(today());
+  else if (a === 'this-month') return setPicked(thisMonth());
+  else if (a === 'clear') return setPicked('');
+  else if (a === 'tog') { const n = Number(v); P.sel.has(n) ? P.sel.delete(n) : P.sel.add(n); }
+  else if (a === 'ok-days') return setPicked([...P.sel].sort((x, y) => x - y).join(','));
+  else if (a === 'cancel') return $('#picker').close();
+  drawPicker();
+});
+
 /* ---------- Fenêtres (bas d'écran) ---------- */
 const sheet = { el: null, acts: {}, onClose: null };
 function openSheet(title, body, foot, acts = {}, opts = {}) {
@@ -289,23 +351,24 @@ function txForm(type, opts = {}) {
   const payOptsFor = accId => { const o = type === 'income' ? [['transfer', 'Virement'], ['cash', 'Espèces'], ['cheque', 'Chèque']] : isDeferredAcc(accountById(accId)) ? [['card', 'Carte différée'], ['cardNow', 'Carte immédiate'], ['directDebit', 'Prélèvement / virement'], ['cash', 'Espèces']] : [['card', 'Carte'], ['directDebit', 'Prélèvement / virement'], ['cash', 'Espèces']]; if (t && !o.some(p => p[0] === pay) && pay !== 'cardNow' && pay !== 'card') o.push([pay, payLabel(pay)]); return o; };
   const payButtons = (accId, sel) => { const o = payOptsFor(accId); if (!o.some(p => p[0] === sel)) sel = sel === 'cardNow' ? 'card' : o[0][0]; return `<div class="opts" id="payBox" style="${o.length === 4 ? 'grid-template-columns:repeat(2,minmax(0,1fr))' : ''}">${o.map(([v, l]) => `<button type="button" class="opt" data-group="pay" data-v="${v}" aria-pressed="${v === sel}">${l}</button>`).join('')}</div>`; };
   const title = isEdit ? (t.treatment === 'transfer' ? 'Virement' : type === 'income' ? 'Revenu' : 'Dépense') : type === 'income' ? 'Nouveau revenu' : 'Nouvelle dépense';
-  const body = `${isEdit ? '' : `<div class="seg light" role="group" aria-label="Type" style="margin:0 auto;width:240px"><button type="button" data-act="switch-type" data-v="expense" aria-pressed="${type === 'expense'}">Dépense</button><button type="button" data-act="switch-type" data-v="income" aria-pressed="${type === 'income'}">Revenu</button></div><div id="dictBox" style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn ghost" data-act="dict" id="dictBtn">${ic('mic', 18)} Dicter l’opération</button><div id="dictOut" class="tiny" style="text-align:center">${opts.dictText ? '« ' + esc(opts.dictText) + ' » · vérifiez puis enregistrez' : 'Ex. « 64 euros 30 Intermarché carte », « pension 2100 euros hier »'}</div></div>`}
+  const srcSched = t?.recurringId ? state.schedules.find(x => x.id === t.recurringId) : null;
+  const body = `${srcSched ? `<div class="alert w" style="align-items:center"><span style="flex:1">Issue de l’échéance <b>« ${esc(srcSched.label)} »</b> (${esc(daysLabel(srcSched))})</span><button type="button" class="btn sm ghost" data-act="open-sched">${ic('edit', 16)} Modifier l’échéance</button></div>` : ''}${isEdit ? '' : `<div class="seg light" role="group" aria-label="Type" style="margin:0 auto;width:240px"><button type="button" data-act="switch-type" data-v="expense" aria-pressed="${type === 'expense'}">Dépense</button><button type="button" data-act="switch-type" data-v="income" aria-pressed="${type === 'income'}">Revenu</button></div><div id="dictBox" style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn ghost" data-act="dict" id="dictBtn">${ic('mic', 18)} Dicter l’opération</button><div id="dictOut" class="tiny" style="text-align:center">${opts.dictText ? '« ' + esc(opts.dictText) + ' » · vérifiez puis enregistrez' : 'Ex. « 64 euros 30 Intermarché carte », « pension 2100 euros hier »'}</div></div>`}
   <label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant</span><input name="amount" class="amount-in ${type === 'income' ? 'inc' : ''}" inputmode="decimal" autocomplete="off" placeholder="0,00 €" value="${t ? amountInput(t.amount) : opts.amount ? amountInput(opts.amount) : ''}"></label>
   <label class="f">${type === 'income' ? 'De qui / quoi ?' : 'Où / quoi ?'}<input name="label" list="labelsList" autocomplete="off" value="${esc(t?.label || opts.label || '')}" placeholder="${type === 'income' ? 'Ex. Pension, remboursement…' : 'Ex. Intermarché, pharmacie…'}"><datalist id="labelsList">${recentLabels(type).map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
   <input type="hidden" name="category" value="${esc(cat)}"><input type="hidden" name="subcategory" value="${esc(t?.subcategory || opts.subcategory || '')}">
   <fieldset><legend>Catégorie <span id="guessNote" class="tiny" style="font-weight:500;color:var(--pos)"></span></legend><div id="catBox"></div></fieldset>
   <fieldset><legend>${type === 'income' ? 'Reçu par' : 'Payé avec'}</legend>${payButtons(acc, pay)}</fieldset>
   <div id="payInfo"></div>
+  ${type === 'expense' ? `<label class="toggle" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="split" ${t?.splits?.length || opts.split ? 'checked' : ''}> <span><b>Détailler le ticket</b> <span class="tiny">· plusieurs articles ou catégories (supermarché…)</span></span></label><div id="splitBox" style="display:flex;flex-direction:column;gap:8px"></div>` : ''}
   <details class="more" ${isEdit || opts.open ? 'open' : ''}><summary><span><span id="whenWhere">${date === today() ? 'Aujourd’hui' : dateFR(date)} · ${esc(accName(acc))}</span> <span class="link">Changer, plus d’options</span></span>${ic('down', 18)}</summary><div>
-   <div class="grid2"><label class="f">Date<input type="date" name="date" value="${date}"></label><label class="f">Compte<select name="account">${accOptions(acc)}</select></label></div>
+   <div class="grid2">${dateField('date', date, 'date', 'Date')}<label class="f">Compte<select name="account">${accOptions(acc)}</select></label></div>
    <label class="f">Note<input name="note" value="${esc(t?.note || '')}" placeholder="Facultatif"></label>
-   ${type === 'expense' ? `<label class="toggle"><input type="checkbox" name="split" ${t?.splits?.length ? 'checked' : ''}> Répartir sur plusieurs catégories (ticket mixte)</label><div id="splitBox"></div>` : ''}
    <label class="toggle"><input type="checkbox" name="nextMonth" ${t?.budgetMonth && t.budgetMonth > t.date.slice(0, 7) ? 'checked' : ''}> Compter dans le budget du mois suivant</label>
    <label class="toggle"><input type="checkbox" name="planned" ${t && isPlanned(t) ? 'checked' : ''}> Prévue : pas encore passée sur le compte</label>
    ${isEdit ? '' : `<label class="toggle"><input type="checkbox" name="repeat"> Revient chaque mois : en faire une échéance</label>`}
   </div></details>`;
   const foot = (isEdit ? `<button class="btn danger" data-act="del" aria-label="Supprimer">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">${isEdit ? 'Enregistrer' : type === 'income' ? 'Enregistrer le revenu' : 'Enregistrer la dépense'}</button>`;
-  const F = { type, splits: t?.splits ? t.splits.map(l => ({ ...l })) : null, guessed: false };
+  const F = { type, splits: t?.splits ? t.splits.map(l => ({ ...l })) : null, guessed: false, autoFirst: t?.splits?.length ? false : true };
   const drawCats = () => {
     const cur = val('category'); const guess = guessCategory(val('label'), type);
     const chips = [...new Set([cur, guess?.category, ...topCategories(type, 4), ...(type === 'income' ? ['Pension', 'Salaire', 'Revenus divers', 'Bungalow · Revenus', 'Ventes diverses'] : ['Alimentation', 'Voiture & transport', 'Santé et mutuelle', 'Entretien de la maison', 'Loisirs et passions'])].filter(c => c && catByName(c) && !catByName(c).hidden))].slice(0, 6);
@@ -326,7 +389,7 @@ function txForm(type, opts = {}) {
     if (!sf().elements.split.checked) { box.innerHTML = ''; F.splits = null; return; }
     if (!F.splits?.length) F.splits = [{ label: '', category: val('category') || 'Alimentation', subcategory: '', amount: parseAmount(val('amount')) || 0 }, { label: '', category: 'Entretien de la maison', subcategory: '', amount: 0 }];
     const sum = F.splits.reduce((a, l) => a + (l.amount || 0), 0), total = parseAmount(val('amount')) || 0;
-    box.innerHTML = F.splits.map((l, i) => `<div class="split-line"><select data-change="split-cat" data-i="${i}" aria-label="Catégorie ligne ${i + 1}">${catOptions(l.category, 'expense')}</select><input data-input="split-amt" data-i="${i}" inputmode="decimal" value="${l.amount ? amountInput(l.amount) : ''}" placeholder="0,00" aria-label="Montant ligne ${i + 1}"><button type="button" class="x" data-act="split-del" data-i="${i}" aria-label="Retirer la ligne">${ic('x', 14)}</button></div>`).join('') + `<div class="head small"><button type="button" class="link" data-act="split-add">+ Ajouter une ligne</button><span class="${sum === total ? 'pos b' : 'neg b'}">${sum === total ? 'Total juste ✓' : 'Reste ' + money(total - sum)}</span></div>`;
+    box.innerHTML = F.splits.map((l, i) => `<div class="split-card"><div class="split-line"><select data-change="split-cat" data-i="${i}" aria-label="Catégorie ligne ${i + 1}">${catOptions(l.category, 'expense')}</select><input data-input="split-amt" data-i="${i}" inputmode="decimal" value="${l.amount ? amountInput(l.amount) : ''}" placeholder="0,00" aria-label="Montant ligne ${i + 1}"><button type="button" class="x" data-act="split-del" data-i="${i}" aria-label="Retirer la ligne">${ic('x', 14)}</button></div><input class="split-lbl" data-input="split-lbl" data-i="${i}" value="${esc(l.label && l.label !== l.category ? l.label : '')}" placeholder="${i === 0 && F.autoFirst !== false ? 'Le reste du ticket (calculé seul)' : 'Article, détail (facultatif)'}" aria-label="Détail ligne ${i + 1}"></div>`).join('') + `<div class="head small"><button type="button" class="link" data-act="split-add">+ Ajouter une ligne</button><span class="${sum === total ? 'pos b' : 'neg b'}">${sum === total ? 'Total juste ✓' : 'Reste ' + money(total - sum)}</span></div>`;
   };
   const applyDict = text => {
     const r = parseSpoken(text, type);
@@ -360,6 +423,7 @@ function txForm(type, opts = {}) {
       try { rec.start(); } catch { F.rec = null; window.mbNoSpeech = true; dictFallback(); }
     },
     'dict-fill': () => { const v = val('dictText').trim(); if (v) applyDict(v); },
+    'open-sched': () => scheduleForm(srcSched),
     'switch-type': b => { const cur = { amount: parseAmount(val('amount')), label: val('label') }; txForm(b.dataset.v, { ...opts, amount: cur.amount || undefined, label: cur.label }); },
     'pick-cat': b => { sf().elements.category.value = b.dataset.v; sf().elements.subcategory.value = ''; $('#guessNote').textContent = ''; drawCats(); },
     'all-cats': () => { const s = $('#allCats'); s.style.display = 'block'; s.focus(); },
@@ -387,8 +451,9 @@ function txForm(type, opts = {}) {
   openSheet(title, body, foot, acts, { focus: isEdit ? null : '[name=amount]' });
   sheet.inputs = {
     label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = '· devinée d’après « ' + val('label') + ' »'; drawCats(); } } },
-    amount: () => { if (F.splits) drawSplits(); },
-    'split-amt': el => { F.splits[Number(el.dataset.i)].amount = parseAmount(el.value) || 0; const s = F.splits.reduce((a, l) => a + l.amount, 0), tot = parseAmount(val('amount')) || 0; const span = $('#splitBox .head span'); if (span) { span.className = s === tot ? 'pos b' : 'neg b'; span.textContent = s === tot ? 'Total juste ✓' : 'Reste ' + money(tot - s); } }
+    amount: () => { if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
+    'split-lbl': el => { F.splits[Number(el.dataset.i)].label = el.value; },
+    'split-amt': el => { const i = Number(el.dataset.i); F.splits[i].amount = parseAmount(el.value) || 0; if (i === 0) F.autoFirst = false; else if (F.autoFirst !== false) { const tot0 = parseAmount(val('amount')) || 0, rest = tot0 - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0); F.splits[0].amount = Math.max(0, rest); const f0 = sf().querySelector('[data-input="split-amt"][data-i="0"]'); if (f0) f0.value = rest > 0 ? amountInput(rest) : ''; } const s = F.splits.reduce((a, l) => a + l.amount, 0), tot = parseAmount(val('amount')) || 0; const span = $('#splitBox .head span'); if (span) { span.className = s === tot ? 'pos b' : 'neg b'; span.textContent = s === tot ? 'Total juste ✓' : 'Reste ' + money(tot - s); } }
   };
   sheet.changes = {
     'pick-cat-sel': el => { if (!el.value) return; F.touchedCat = true; sf().elements.category.value = el.value; sf().elements.subcategory.value = ''; drawCats(); },
@@ -406,9 +471,9 @@ function txForm(type, opts = {}) {
 function bungalowForm() {
   const rates = state.settings.bungalowRates; const acc = defaultAccountId();
   const body = `<fieldset><legend>Canal de réservation</legend><div class="seg light">${CHANNELS.map((c, i) => `<button type="button" data-group="chan" data-v="${c}" aria-pressed="${i === 1}">${c === 'Location en direct' ? 'En direct' : c}</button>`).join('')}</div></fieldset>
-  <div class="grid2"><label class="f">Arrivée<input type="date" name="from" value="${today()}"></label><label class="f">Départ<input type="date" name="to" value=""></label></div><div class="tiny" id="nights" style="margin-top:-8px"></div>
+  <div class="grid2">${dateField('from', today(), 'date', 'Arrivée')}${dateField('to', '', 'date', 'Départ', true)}</div><div class="tiny" id="nights" style="margin-top:-8px"></div>
   <label class="f">Montant payé par le voyageur (brut)<input name="gross" inputmode="decimal" placeholder="0,00 €" style="font:700 22px Outfit,sans-serif;color:var(--pos);height:54px"></label>
-  <div class="grid2" id="comBox"><label class="f">Commission<input name="com" inputmode="decimal" placeholder="0,00 €"></label><label class="f">Versé le<input type="date" name="paid" value="${today()}"></label></div><div class="tiny" id="rateNote" style="margin-top:-8px"></div>
+  <div class="grid2" id="comBox"><label class="f">Commission<input name="com" inputmode="decimal" placeholder="0,00 €"></label>${dateField('paid', today(), 'date', 'Versé le')}</div><div class="tiny" id="rateNote" style="margin-top:-8px"></div>
   <section id="recap" class="card" style="background:var(--bg);padding:14px"></section>
   <details class="more"><summary><span>${esc(accName(acc))} <span class="link">Changer, note</span></span>${ic('down', 18)}</summary><div><label class="f">Compte<select name="account">${accOptions(acc)}</select></label><label class="f">Note<input name="note" placeholder="Ex. famille Martin, 2 adultes"></label></div></details>`;
   let touched = false;
@@ -445,7 +510,7 @@ function bungalowForm() {
 
 function transferForm() {
   const accs = activeAccounts(); if (accs.length < 2) { alert('Il faut au moins deux comptes. Ajoutez-en un dans Plus › Mes comptes.'); return; }
-  openSheet('Virement entre mes comptes', `<div class="grid2"><label class="f">Depuis<select name="from">${accOptions(defaultAccountId())}</select></label><label class="f">Vers<select name="to">${accOptions(accs.find(a => a.id !== defaultAccountId())?.id)}</select></label></div><label class="f">Montant<input name="amount" inputmode="decimal" placeholder="0,00 €" style="font:700 22px Outfit,sans-serif;height:54px"></label><div class="grid2"><label class="f">Date<input type="date" name="date" value="${today()}"></label><label class="f">Libellé<input name="label" placeholder="Facultatif"></label></div><p class="tiny" style="margin:0">Un virement entre vos comptes ne compte ni en dépense ni en revenu.</p>`, `<button class="btn full" data-act="save">Enregistrer le virement</button>`, {
+  openSheet('Virement entre mes comptes', `<div class="grid2"><label class="f">Depuis<select name="from">${accOptions(defaultAccountId())}</select></label><label class="f">Vers<select name="to">${accOptions(accs.find(a => a.id !== defaultAccountId())?.id)}</select></label></div><label class="f">Montant<input name="amount" inputmode="decimal" placeholder="0,00 €" style="font:700 22px Outfit,sans-serif;height:54px"></label><div class="grid2">${dateField('date', today(), 'date', 'Date')}<label class="f">Libellé<input name="label" placeholder="Facultatif"></label></div><p class="tiny" style="margin:0">Un virement entre vos comptes ne compte ni en dépense ni en revenu.</p>`, `<button class="btn full" data-act="save">Enregistrer le virement</button>`, {
     save: () => { try { createTransfer(val('from'), val('to'), val('date'), parseAmount(val('amount')), val('label').trim()); save(); closeSheet(); render(); toast('Virement enregistré'); } catch (e) { alert(e.message); } }
   }, { focus: '[name=amount]' });
 }
@@ -453,65 +518,83 @@ function transferForm() {
 /* Échéance en 4 champs */
 const TEMPLATES = [
   ['Électricité', 'expense', 'Énergie et eau', 'Électricité'], ['Assurance', 'expense', 'Assurances', 'Habitation'], ['Téléphone', 'expense', 'Téléphone et internet', 'Mobile'], ['Box internet', 'expense', 'Téléphone et internet', 'Box internet'],
-  ['Crédit', 'expense', 'Crédits', 'Crédit consommation'], ['Loyer', 'expense', 'Logement', 'Loyer ou crédit immobilier'], ['Mutuelle', 'expense', 'Santé et mutuelle', 'Mutuelle'], ['Salaire', 'income', 'Salaire', ''], ['Pension', 'income', 'Pension', 'Retraite de base']
+  ['Crédit', 'expense', 'Crédits', 'Crédit consommation'], ['Loyer', 'expense', 'Logement', 'Loyer ou crédit immobilier'], ['Mutuelle', 'expense', 'Santé et mutuelle', 'Mutuelle'], ['Salaire', 'income', 'Salaire', ''], ['Pension', 'income', 'Pension', 'Retraite de base'], ['Épargne', 'transfer', '', '']
 ];
 function scheduleForm(s) {
   const isEdit = !!s; const acc = s?.account || defaultAccountId();
-  s = s || { label: '', amount: 0, type: 'expense', account: acc, category: '', subcategory: '', payment: 'directDebit', day: Number(today().slice(8)), every: 1, start: thisMonth(), end: '', nextMonthBudget: false };
-  const body = `${isEdit ? '' : `<fieldset><legend>Choisir un modèle <span class="tiny" style="font-weight:500">· ou écrire le vôtre</span></legend><div class="pills">${TEMPLATES.map(x => `<button type="button" class="pill s" data-act="tpl" data-v="${esc(x[0])}" aria-pressed="false">${x[1] === 'income' ? '+ ' : ''}${esc(x[0])}</button>`).join('')}</div></fieldset>`}
-  <label class="f">Nom<input name="label" value="${esc(s.label)}" placeholder="Ex. EDF, crédit voiture…" autocomplete="off"></label>
-  <div class="grid2"><label class="f">Montant<input name="amount" inputmode="decimal" value="${amountInput(s.amount)}" placeholder="0,00 €" style="font:700 18px Outfit,sans-serif"></label><label class="f">Le combien ?<select name="day">${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}" ${i + 1 === s.day ? 'selected' : ''}>le ${i + 1}${i + 1 === 31 ? ' (fin de mois)' : ''}</option>`).join('')}</select></label></div>
+  s = s || { label: '', amount: 0, type: 'expense', account: acc, toAccount: '', category: '', subcategory: '', payment: 'directDebit', days: [Number(today().slice(8))], every: 1, start: thisMonth(), end: '', nextMonthBudget: false };
+  const otherAcc = activeAccounts().find(a => a.id !== s.account)?.id || '';
+  const body = `<div class="seg light" role="group" aria-label="Type">${[['expense', 'Dépense'], ['income', 'Revenu'], ['transfer', 'Virement']].map(([v, l]) => `<button type="button" data-group="stype" data-v="${v}" aria-pressed="${s.type === v}">${l}</button>`).join('')}</div>
+  ${isEdit ? '' : `<fieldset><legend>Choisir un modèle <span class="tiny" style="font-weight:500">· ou écrire le vôtre</span></legend><div class="pills">${TEMPLATES.map(x => `<button type="button" class="pill s" data-act="tpl" data-v="${esc(x[0])}" aria-pressed="false">${x[1] === 'income' ? '+ ' : x[1] === 'transfer' ? '⇄ ' : ''}${esc(x[0])}</button>`).join('')}</div></fieldset>`}
+  <label class="f">Nom<input name="label" value="${esc(s.label)}" placeholder="Ex. EDF, crédit voiture, épargne…" autocomplete="off"></label>
+  <div class="grid2"><label class="f">Montant<input name="amount" inputmode="decimal" value="${amountInput(s.amount)}" placeholder="0,00 €" style="font:700 18px Outfit,sans-serif"></label>${dateField('days', schedDays(s).join(','), 'days', 'Quels jours ?')}</div>
+  <div class="grid2" data-only="t"><label class="f">Depuis<select name="account">${accOptions(s.account)}</select></label><label class="f">Vers<select name="toAccount">${accOptions(s.toAccount || otherAcc)}</select></label></div>
   <fieldset><legend>Tous les</legend><div class="seg light">${[[1, 'mois'], [3, 'trimestres'], [12, 'ans']].map(([v, l]) => `<button type="button" data-group="every" data-v="${v}" aria-pressed="${(s.every || 1) === v}">${l}</button>`).join('')}</div></fieldset>
-  ${s.custom?.length ? `<p class="alert w">Cette échéance suit un calendrier précis repris de la version actuelle (${s.custom.length} dates). Les modifications de montant et de jour ne s’appliquent pas à ce calendrier.</p>` : ''}
+  ${s.custom?.length ? `<p class="alert w">Cette échéance suit un calendrier précis repris de la version actuelle (${s.custom.length} dates). Les modifications de montant et de jours ne s’appliquent pas à ce calendrier.</p>` : ''}
   <div class="alert" id="schedSum"></div>
-  <details class="more" ${isEdit ? 'open' : ''}><summary><span class="link">Modifier la catégorie, le compte, la date de fin</span>${ic('down', 18)}</summary><div>
-   <div class="seg light"><button type="button" data-group="stype" data-v="expense" aria-pressed="${s.type === 'expense'}">Dépense</button><button type="button" data-group="stype" data-v="income" aria-pressed="${s.type === 'income'}">Revenu</button></div>
-   <div class="grid2"><label class="f">Catégorie<select name="category">${catOptions(s.category, s.type)}</select></label><label class="f">Sous-catégorie<select name="subcategory"></select></label></div>
-   <div class="grid2"><label class="f">Compte<select name="account">${accOptions(s.account)}</select></label><label class="f">Mode<select name="payment">${[['directDebit', 'Prélèvement'], ['transfer', 'Virement'], ['card', 'Carte'], ['cheque', 'Chèque'], ['cash', 'Espèces']].map(([v, l]) => `<option value="${v}" ${s.payment === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
-   <div class="grid2"><label class="f">À partir de<input type="month" name="start" value="${s.start}"></label><label class="f">Dernière fois (facultatif)<input type="month" name="end" value="${s.end || ''}"></label></div>
-   <label class="toggle"><input type="checkbox" name="nextMonth" ${s.nextMonthBudget ? 'checked' : ''}> Compte pour le budget du mois suivant (ex. pension versée en fin de mois)</label>
+  <details class="more" ${isEdit ? 'open' : ''}><summary><span class="link">Catégorie, compte, début et fin</span>${ic('down', 18)}</summary><div>
+   <div class="grid2" data-only="nt"><label class="f">Catégorie<select name="category">${catOptions(s.category, s.type)}</select></label><label class="f">Sous-catégorie<select name="subcategory"></select></label></div>
+   <div class="grid2" data-only="nt"><label class="f">Compte<select name="accountNT">${accOptions(s.account)}</select></label><label class="f">Mode<select name="payment">${[['directDebit', 'Prélèvement'], ['transfer', 'Virement'], ['card', 'Carte'], ['cheque', 'Chèque'], ['cash', 'Espèces']].map(([v, l]) => `<option value="${v}" ${s.payment === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
+   <div class="grid2">${dateField('start', s.start, 'month', 'À partir de')}${dateField('end', s.end || '', 'month', 'Dernière fois', true)}</div>
+   <label class="toggle" data-only="nt"><input type="checkbox" name="nextMonth" ${s.nextMonthBudget ? 'checked' : ''}> Compte pour le budget du mois suivant (ex. pension versée en fin de mois)</label>
   </div></details>`;
+  const isT = () => getPressed('stype') === 'transfer';
+  const drawType = () => { sf().querySelectorAll('[data-only]').forEach(el => { el.style.display = (el.dataset.only === 't') === isT() ? '' : 'none'; }); };
   const drawSubs = () => { const c = catByName(val('category')); sf().elements.subcategory.innerHTML = '<option value="">—</option>' + (c?.subs || []).map(x => `<option ${x === s.subcategory ? 'selected' : ''}>${esc(x)}</option>`).join(''); };
-  const drawSum = () => { const ty = getPressed('stype'), c = val('category'), sub = val('subcategory'); $('#schedSum').innerHTML = `<span>${ty === 'income' ? 'Revenu' : 'Dépense'} · <b>${esc(c)}${sub ? ' / ' + esc(sub) : ''}</b> · ${esc(accName(val('account')))} · ${payLabel(val('payment')).toLowerCase()}${sf().elements.nextMonth.checked ? ' · budget du mois suivant' : ''}</span>`; };
+  const drawSum = () => {
+    const e = sf().elements, ty = getPressed('stype'), d = daysLabel({ days: (val('days') || '1').split(',').map(Number) }), ev = Number(getPressed('every')) || 1, per = ev === 12 ? 'chaque année' : ev === 3 ? 'chaque trimestre' : 'chaque mois';
+    $('#schedSum').innerHTML = ty === 'transfer' ? `<span>Virement automatique de <b>${esc(accName(e.account.value))}</b> vers <b>${esc(accName(e.toAccount.value))}</b>, ${esc(d)} ${per}. Ne compte pas dans le budget.</span>`
+      : `<span>${ty === 'income' ? 'Revenu' : 'Dépense'} · <b>${esc(val('category'))}${val('subcategory') ? ' / ' + esc(val('subcategory')) : ''}</b> · ${esc(accName(e.accountNT.value))} · ${payLabel(val('payment')).toLowerCase()} · ${esc(d)} ${per}${e.nextMonth.checked ? ' · budget du mois suivant' : ''}</span>`;
+  };
   const foot = (isEdit ? `<button class="btn danger" data-act="del" aria-label="Supprimer l’échéance">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">${isEdit ? 'Enregistrer' : 'Enregistrer l’échéance'}</button>`;
   openSheet(isEdit ? 'Modifier l’échéance' : 'Nouvelle échéance', body, foot, {
-    tpl: b => { const x = TEMPLATES.find(x => x[0] === b.dataset.v); sf().querySelectorAll('[data-act=tpl]').forEach(p => p.setAttribute('aria-pressed', String(p === b))); const e = sf().elements; e.label.value = x[0]; pressed('stype', x[1]); e.category.innerHTML = catOptions(x[2], x[1]); e.category.value = x[2]; s.subcategory = x[3]; drawSubs(); e.payment.value = x[1] === 'income' ? 'transfer' : 'directDebit'; e.nextMonth.checked = x[0] === 'Pension'; drawSum(); e.amount.focus(); },
+    tpl: b => {
+      const x = TEMPLATES.find(x => x[0] === b.dataset.v); sf().querySelectorAll('[data-act=tpl]').forEach(p => p.setAttribute('aria-pressed', String(p === b)));
+      const e = sf().elements; e.label.value = x[0]; pressed('stype', x[1]);
+      if (x[1] !== 'transfer') { e.category.innerHTML = catOptions(x[2], x[1]); e.category.value = x[2]; s.subcategory = x[3]; drawSubs(); e.payment.value = x[1] === 'income' ? 'transfer' : 'directDebit'; e.nextMonth.checked = x[0] === 'Pension'; }
+      drawType(); drawSum(); e.amount.focus();
+    },
     save: () => {
       try {
-        const e = sf().elements, amount = parseAmount(e.amount.value);
+        const e = sf().elements, amount = parseAmount(e.amount.value), ty = getPressed('stype');
         if (!e.label.value.trim()) throw Error('Donnez un nom à l’échéance.');
         if (!amount || amount <= 0) throw Error('Indiquez le montant.');
+        const days = (e.days.value || '').split(',').filter(Boolean).map(Number); if (!days.length) throw Error('Choisissez au moins un jour.');
         if (!validMonth(e.start.value)) throw Error('Mois de départ incorrect.');
         if (e.end.value && e.end.value < e.start.value) throw Error('La dernière fois est avant le début.');
-        const n = { ...s, id: s.id || uid(), label: e.label.value.trim(), amount, type: getPressed('stype'), account: e.account.value, category: e.category.value, subcategory: e.subcategory.value, payment: e.payment.value, day: Number(e.day.value), every: Number(getPressed('every')) || 1, start: e.start.value, end: e.end.value || '', nextMonthBudget: e.nextMonth.checked, skip: s.skip || [] };
-        if (n.splits?.length && n.splits.reduce((a, l) => a + l.amount, 0) !== n.amount) delete n.splits;
+        if (ty === 'transfer' && (!e.toAccount.value || e.toAccount.value === e.account.value)) throw Error('Choisissez deux comptes différents pour le virement.');
+        const n = { ...s, id: s.id || uid(), label: e.label.value.trim(), amount, type: ty, days, day: days[0], every: Number(getPressed('every')) || 1, start: e.start.value, end: e.end.value || '', skip: s.skip || [] };
+        if (ty === 'transfer') { n.account = e.account.value; n.toAccount = e.toAccount.value; n.category = SYSTEM.transfer; n.subcategory = ''; n.payment = 'transfer'; n.nextMonthBudget = false; }
+        else { n.account = e.accountNT.value; delete n.toAccount; n.category = e.category.value; n.subcategory = e.subcategory.value; n.payment = e.payment.value; n.nextMonthBudget = e.nextMonth.checked; }
+        if (n.splits?.length && (ty === 'transfer' || n.splits.reduce((a, l) => a + l.amount, 0) !== n.amount)) delete n.splits;
         const i = state.schedules.findIndex(x => x.id === n.id); if (i >= 0) state.schedules[i] = n; else state.schedules.push(n);
-        save(); closeSheet(); render(); toast(isEdit ? 'Échéance modifiée' : 'Échéance créée : elle apparaîtra chaque ' + (n.every === 12 ? 'année' : n.every === 3 ? 'trimestre' : 'mois'));
+        for (const t of state.transactions) if (t.recurringId === n.id && isPlanned(t) && t.date >= today()) { t.amount = n.amount; t.account = n.account; }
+        save(); closeSheet(); render(); toast(isEdit ? 'Échéance modifiée' : 'Échéance créée : ' + daysLabel(n) + ' ' + (n.every === 12 ? 'chaque année' : n.every === 3 ? 'chaque trimestre' : 'chaque mois'));
       } catch (err) { alert(err.message); }
     },
-    del: () => { if (!confirm('Supprimer l’échéance « ' + s.label + ' » ?\nLes opérations déjà enregistrées sont conservées.')) return; state.schedules = state.schedules.filter(x => x.id !== s.id); save(); closeSheet(); render(); toast('Échéance supprimée'); }
+    del: () => { if (!confirm('Supprimer l’échéance « ' + s.label + ' » ?\nLes opérations déjà enregistrées sont conservées.')) return; state.schedules = state.schedules.filter(x => x.id !== s.id); state.transactions = state.transactions.filter(t => !(t.recurringId === s.id && isPlanned(t))); save(); closeSheet(); render(); toast('Échéance supprimée'); }
   }, { focus: isEdit ? null : '[name=label]' });
-  sheet.changes = { any: el => { if (el.name === 'category') { s.subcategory = ''; drawSubs(); } drawSum(); } };
-  sheet.inputs = {};
-  sheet.afterPress = g => { if (g === 'stype') { const e = sf().elements; const cur = e.category.value; e.category.innerHTML = catOptions(cur, getPressed('stype')); drawSubs(); } drawSum(); };
-  drawSubs(); drawSum();
+  sheet.changes = { any: el => { if (el.name === 'category') { s.subcategory = ''; drawSubs(); } if (el.name === 'account') sf().elements.accountNT.value = el.value; if (el.name === 'accountNT') sf().elements.account.value = el.value; drawSum(); } };
+  sheet.afterPress = g => { if (g === 'stype' && !isT()) { const e = sf().elements; const cur = e.category.value; e.category.innerHTML = catOptions(cur, getPressed('stype')); drawSubs(); } drawType(); drawSum(); };
+  drawSubs(); drawType(); drawSum();
 }
 function schedulesList() {
-  const by = [...state.schedules].sort((a, b) => a.day - b.day);
-  openSheet('Mes échéances', `<div class="card list" style="padding:0">${by.map(s => `<button class="row-item" data-act="edit-sched" data-id="${esc(s.id)}"><span class="day"><b>${s.day}</b>${s.every === 12 ? '/an' : s.every === 3 ? '/trim.' : '/mois'}</span><span class="grow"><span class="t" style="display:block">${esc(s.label)}</span><span class="s" style="display:block">${esc(s.category)}${showAccounts() ? ' · ' + esc(accName(s.account)) : ''}${s.end ? ' · jusqu’à ' + esc(monthLabel(s.end).toLowerCase()) : ''}</span></span><span class="amt ${s.type === 'income' ? 'pos' : 'neg'}">${s.type === 'income' ? '+' : '−'}${money(s.amount)}</span></button>`).join('')}</div>`, `<button class="btn full" data-act="new">${ic('plus', 18)} Nouvelle échéance</button>`, {
+  const by = [...state.schedules].sort((a, b) => schedDays(a)[0] - schedDays(b)[0]);
+  openSheet('Mes échéances', `<div class="card list" style="padding:0">${by.map(s => `<button class="row-item" data-act="edit-sched" data-id="${esc(s.id)}"><span class="day"><b>${schedDays(s).join(',')}</b>${s.every === 12 ? '/an' : s.every === 3 ? '/trim.' : '/mois'}</span><span class="grow"><span class="t" style="display:block">${esc(s.label)}</span><span class="s" style="display:block">${s.type === 'transfer' ? 'Virement ' + esc(accName(s.account)) + ' → ' + esc(accName(s.toAccount)) : esc(s.category) + (showAccounts() ? ' · ' + esc(accName(s.account)) : '')}${s.end ? ' · jusqu’à ' + esc(monthLabel(s.end).toLowerCase()) : ''}</span></span><span class="amt ${s.type === 'income' ? 'pos' : s.type === 'transfer' ? '' : 'neg'}">${s.type === 'income' ? '+' : s.type === 'transfer' ? '⇄ ' : '−'}${money(s.amount)}</span></button>`).join('')}</div>`, `<button class="btn full" data-act="new">${ic('plus', 18)} Nouvelle échéance</button>`, {
     'edit-sched': b => scheduleForm(state.schedules.find(x => x.id === b.dataset.id)), new: () => scheduleForm()
   });
 }
-/* Confirmer / corriger une échéance */
+/* Confirmer / corriger / modifier une échéance */
 function dueSheet(d) {
-  const t0 = today();
-  openSheet(esc(d.label), `<div class="small">${esc(d.category)} · ${esc(accName(d.account))} · prévue le ${dateFR(d.date)}</div><label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant passé sur le compte</span><input name="amount" class="amount-in ${d.type === 'income' ? 'inc' : ''}" inputmode="decimal" value="${amountInput(d.amount)}"></label><label class="f">Date<input type="date" name="date" value="${d.date <= t0 ? d.date : t0}"></label>${d.sched ? `<label class="toggle"><input type="checkbox" name="keep"> Ce nouveau montant s’applique aussi aux prochains mois</label>` : ''}`,
-    `${d.sched ? `<button class="btn ghost" data-act="skip">Pas ce mois-ci</button>` : `<button class="btn ghost" data-act="edit">Modifier</button>`}<button class="btn full" data-act="ok">${ic('check', 18, 2.6)} C’est passé</button>`, {
-    ok: () => { const a = parseAmount(val('amount')); if (!a || a <= 0) return alert('Montant incorrect.'); if (d.sched && sf().elements.keep?.checked) d.sched.amount = a; confirmDue(d, a, val('date')); save(); closeSheet(); render(); toast('Enregistré'); },
-    skip: () => { d.sched.skip = [...new Set([...(d.sched.skip || []), d.date.slice(0, 7)])]; save(); closeSheet(); render(); toast('Ignorée pour ' + monthLabel(d.date.slice(0, 7)).toLowerCase()); },
-    edit: () => { closeSheet(); txForm(d.type, { tx: d.tx }); }
-  }, { back: d.sched ? 'sched-edit' : null });
-  sheet.acts['sched-edit'] = () => scheduleForm(d.sched);
+  const t0 = today(), multi = d.sched && schedDays(d.sched).length > 1, tr = d.type === 'transfer';
+  const what = tr ? 'Virement ' + esc(accName(d.account)) + ' → ' + esc(accName(d.toAccount)) : esc(d.category) + ' · ' + esc(accName(d.account));
+  openSheet(esc(d.label), `<div class="small">${what} · prévue le ${dateFR(d.date)}</div><label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant ${tr ? 'viré' : 'passé sur le compte'}</span><input name="amount" class="amount-in ${d.type === 'income' ? 'inc' : tr ? '' : ''}" style="${tr ? 'color:var(--ink)' : ''}" inputmode="decimal" value="${amountInput(d.amount)}"></label>${dateField('date', d.date <= t0 ? d.date : t0, 'date', 'Date')}${d.sched ? `<label class="toggle"><input type="checkbox" name="keep"> Ce nouveau montant s’applique aussi aux prochaines fois</label><button type="button" class="btn ghost full" data-act="sched-edit">${ic('edit', 18)} Modifier l’échéance (montant, jours, compte…)</button>` : `<button type="button" class="btn ghost full" data-act="edit">${ic('edit', 18)} Modifier l’opération prévue</button>`}`,
+    `${d.sched ? `<button class="btn ghost" data-act="skip">${multi ? 'Pas cette fois' : 'Pas ce mois-ci'}</button>` : ''}<button class="btn full" data-act="ok">${ic('check', 18, 2.6)} C’est passé</button>`, {
+    ok: () => { const a = parseAmount(val('amount')); if (!a || a <= 0) return alert('Montant incorrect.'); if (d.sched && sf().elements.keep?.checked) d.sched.amount = a; try { confirmDue(d, a, val('date')); } catch (e) { return alert(e.message); } save(); closeSheet(); render(); toast('Enregistré'); },
+    skip: () => { d.sched.skip = [...new Set([...(d.sched.skip || []), multi ? d.date : d.date.slice(0, 7)])]; save(); closeSheet(); render(); toast(multi ? 'Ignorée pour le ' + dateFR(d.date).slice(0, 5) : 'Ignorée pour ' + monthLabel(d.date.slice(0, 7)).toLowerCase()); },
+    edit: () => txForm(d.type, { tx: d.tx }),
+    'sched-edit': () => scheduleForm(d.sched)
+  });
 }
 
 /* Compte */
@@ -521,7 +604,7 @@ function accountFields(a, inline = false) {
   <fieldset style="margin-top:12px"><legend>Type</legend><div class="seg light">${[['courant', 'Courant'], ['epargne', 'Épargne'], ['especes', 'Espèces']].map(([v, l]) => `<button type="button" data-group="atype" data-v="${v}" aria-pressed="${tp === v}">${l}</button>`).join('')}</div></fieldset>
   <fieldset style="margin-top:12px"><legend>Carte bancaire</legend><div class="seg light">${[['immediate', 'Immédiate'], ['differee', 'Différée'], ['aucune', 'Aucune']].map(([v, l]) => `<button type="button" data-group="acard" data-v="${v}" aria-pressed="${card === v}">${l}</button>`).join('')}</div>
   <label class="toggle" id="debitRow" style="justify-content:space-between;${card === 'differee' ? '' : 'display:none'}">Débit de la carte le<select name="debitDay" class="in" style="width:auto;height:42px">${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}" ${(a.debitDay || 10) === i + 1 ? 'selected' : ''}>${i + 1} du mois suivant</option>`).join('')}</select></label></fieldset>
-  <div class="grid2" style="margin-top:12px"><label class="f">${inline ? 'Solde actuel' : 'Solde de départ'}<input name="opening" inputmode="decimal" value="${a.opening != null ? amountInput(a.opening) : ''}" placeholder="0,00 €"></label><label class="f">À la date du<input type="date" name="start" value="${a.start || today()}"></label></div>`;
+  <div class="grid2" style="margin-top:12px"><label class="f">${inline ? 'Solde actuel' : 'Solde de départ'}<input name="opening" inputmode="decimal" value="${a.opening != null ? amountInput(a.opening) : ''}" placeholder="0,00 €"></label>${dateField('start', a.start || today(), 'date', 'À la date du')}</div>`;
 }
 function accountForm(a) {
   const isEdit = !!a; const n = a ? state.transactions.filter(t => t.account === a.id).length : 0;
@@ -625,6 +708,7 @@ function act(name, b) {
       break;
     }
     case 'edit-tx': { const t = state.transactions.find(x => x.id === b.dataset.id); if (t) txForm(t.type, { tx: t }); break; }
+    case 'detail-tx': { const t = state.transactions.find(x => x.id === b.dataset.id); if (t) txForm(t.type, { tx: t, split: true }); break; }
     case 'due-open': { const d = dueList(ui.month, ui.acc).find(x => x.key === b.dataset.key); if (d) dueSheet(d); break; }
     case 'due-ok': { const d = dueList(ui.month, ui.acc).find(x => x.key === b.dataset.key); if (!d) break; confirmDue(d, d.amount, d.date <= today() ? d.date : today()); save(); render(); toast('✓ ' + d.label + ' enregistré'); break; }
     case 'sched-list': schedulesList(); break;
@@ -666,6 +750,7 @@ document.addEventListener('click', e => {
   if (g && !b) { const root = g.closest('#sf') || g.closest('.welcome'); root.querySelectorAll(`[data-group="${g.dataset.group}"]`).forEach(x => x.setAttribute('aria-pressed', String(x === g))); if (g.dataset.group === 'acard') { const r = root.querySelector('#debitRow'); if (r) r.style.display = g.dataset.v === 'differee' ? '' : 'none'; } if (g.closest('#sf')) sheet.afterPress?.(g.dataset.group); return; }
   if (!b) return;
   const n = b.dataset.act;
+  if (n === 'pick-date') { e.preventDefault(); openPicker(b); return; }
   if (b.closest('#sheet') && sheet.acts[n]) { e.preventDefault(); sheet.acts[n](b); return; }
   if (n === 'close' || !b.closest('#sheet') || ['form', 'edit-tx'].includes(n)) { if (b.closest('#sheet') && n !== 'close') closeSheet(); act(n, b); }
 });
