@@ -66,13 +66,14 @@ function homeMain(m, acc, g) {
   const missingAcc = activeAccounts().filter(a => a.opening == null && (!acc || a.id === acc));
   let h = `<section class="card hero"><div class="label">${acc ? 'Solde · ' + esc(accName(acc)) : 'Total des avoirs'} · au ${dateFR(today()).slice(0, 5)}</div><div class="big num">${money(hold.total)}</div>`;
   if (missingAcc.length) h += `<div class="tiny" style="margin-top:4px">Solde de départ manquant : ${missingAcc.map(a => esc(a.name)).join(', ')} · <button class="link" data-act="page" data-page="accounts">Compléter</button></div>`;
-  h += `<div class="grid3 split"><div><div class="tiny">Revenus</div><div class="b pos">+${moneyR(tot.income)}</div></div><div><div class="tiny">Dépenses</div><div class="b neg">−${moneyR(tot.expense)}</div></div><div><div class="tiny">Reste</div><div class="b">${moneyR(tot.income - tot.expense)}</div></div></div></section>`;
+  h += `<div class="grid3 split"><div><div class="tiny">Revenus</div><div class="b pos">+${moneyR(tot.income)}</div></div><div><div class="tiny">Dépenses</div><div class="b neg">−${moneyR(tot.expense)}</div></div><div><button type="button" class="cellbtn" data-act="reste-info" aria-label="Reste : explication"><span class="tiny">Reste <span class="info-dot">?</span></span><span class="b" style="display:block">${moneyR(tot.income - tot.expense)}</span></button></div></div></section>`;
   /* Rappels */
   const due = dueList(m, acc).filter(d => d.date <= today() || m < cur);
   const cards = [...cardDues(m, acc), ...(m === cur ? cardDues(addMonths(m, 1), acc) : [])].filter(c => c.date >= today());
   const rows = [];
   for (const c of cards.slice(0, 2)) rows.push(`<button class="row-item" data-act="page" data-page="card"><span class="ico c">${ic('card', 18)}</span><span class="grow"><span class="t" style="display:block">Carte différée${showAccounts() ? ' · ' + esc(accName(c.account)) : ''}</span><span class="s" style="display:block">Débit automatique le ${dateFR(c.date).slice(0, 5)} · ${c.count} achat${c.count > 1 ? 's' : ''}</span></span><span class="amt neg">−${money(c.amount)}</span></button>`);
   if (due.length) rows.push(`<button class="row-item" data-act="tab" data-tab="due"><span class="ico w">${ic('clock', 18)}</span><span class="grow"><span class="t" style="display:block">${due.length} échéance${due.length > 1 ? 's' : ''} à confirmer</span><span class="s" style="display:block">Un appui sur ✓ quand c’est passé sur le compte</span></span>${ic('r', 18)}</button>`);
+  if (m === cur) { const ni = nextIncome(acc); if (ni) { const f = forecastAt(prevDay(ni.date), acc); rows.push(`<button class="row-item" data-act="reste-info"><span class="ico g">${ic('clock', 18)}</span><span class="grow"><span class="t" style="display:block">Avant ${esc(ni.label)}</span><span class="s" style="display:block">Ce qui restera la veille du ${dateFR(ni.date).slice(0, 5)}</span></span><span class="amt ${f.total < 0 ? 'neg' : ''}">${money(f.total)}</span></button>`); } }
   if (m >= cur) { const f = forecast(m, acc); rows.push(`<button class="row-item" data-act="tab" data-tab="due"><span class="ico g">${ic('cal', 18)}</span><span class="grow"><span class="t" style="display:block">Fin ${m === cur ? 'du mois' : 'de ' + esc(MONTHS[Number(m.slice(5)) - 1])} prévue</span><span class="s" style="display:block">Avec les échéances et la carte différée</span></span><span class="amt">${money(f.total)}</span></button>`); }
   if (rows.length) h += `<section class="card list">${rows.join('')}</section>`;
   /* Enveloppes */
@@ -705,8 +706,27 @@ function importPreview(fileName, accId, res) {
 }
 
 /* ---------- Événements ---------- */
+function resteSheet() {
+  const m = ui.month, acc = ui.acc || '', g = ui.group || 'all', cur = thisMonth();
+  const tot = monthTotals(m, g, acc), pl = m >= cur ? monthPlanned(m, g, acc) : { income: 0, expense: 0 };
+  const r0 = tot.income - tot.expense, r1 = r0 + pl.income - pl.expense, mon = esc(monthLabel(m).toLowerCase());
+  const kv = (k, v, cls = '', bold = false) => `<div class="kv${bold ? ' tot' : ''}"><span>${k}</span><span class="num ${cls}">${v}</span></div>`;
+  let h = `<p class="small" style="margin:0 0 10px">Le <b>Reste</b>, c’est vos <b>revenus moins vos dépenses</b> comptés pour ${mon}${g === 'perso' ? ' (vue Personnel : sans le bungalow)' : g === 'bungalow' ? ' (bungalow seulement)' : ''}. C’est le résultat du budget du mois, <b>pas l’argent sur vos comptes</b>.</p>`;
+  h += `<div class="kvbox">${kv('Revenus déjà comptés', '+' + money(tot.income), 'pos')}${kv('Dépenses déjà comptées', '−' + money(tot.expense), 'neg')}${kv('Reste à ce jour', money(r0), r0 < 0 ? 'neg' : '', true)}</div>`;
+  if (pl.income || pl.expense) h += `<div class="kvbox">${kv('Revenus encore prévus', '+' + money(pl.income), 'pos')}${kv('Dépenses encore prévues', '−' + money(pl.expense), 'neg')}${kv('Reste prévu fin ' + mon.split(' ')[0], money(r1), r1 < 0 ? 'neg' : '', true)}</div>`;
+  if (m === cur) {
+    const ni = nextIncome(acc), hold = holdings(today(), acc), fin = forecast(m, acc);
+    h += `<h3 class="kvh">Argent disponible sur ${acc ? 'le compte' : 'vos comptes'}</h3><div class="kvbox">${kv('Aujourd’hui', money(hold.total))}`;
+    if (ni) { const f = forecastAt(prevDay(ni.date), acc); h += kv(`Avant le prochain revenu<br><span class="tiny">${esc(ni.label)} · ${money(ni.amount)} le ${dateFR(ni.date).slice(0, 5)}</span>`, money(f.total), f.total < 0 ? 'neg' : '', true); }
+    h += kv('Fin du mois prévue', money(fin.total)) + `</div>`;
+    h += `<div class="alert" style="margin-top:10px"><span>« Avant le prochain revenu » = ce qu’il vous restera la veille de l’arrivée de ce revenu, une fois passés les prélèvements, échéances et débits de carte différée prévus d’ici là.${ni ? '' : ' Ajoutez votre salaire ou pension dans Échéances pour voir ce montant.'}</span></div>`;
+  }
+  if (r0 < 0 && m === cur) h += `<div class="alert" style="margin-top:10px"><span>Un Reste négatif en cours de mois est normal si votre revenu arrive en fin de mois : il n’est pas encore compté.<br><b>Votre revenu de fin de mois sert à payer le mois suivant ?</b> Dans son échéance, cochez « Compte pour le budget du mois suivant » : il sera compté dans le Reste du mois suivant.</span></div>`;
+  openSheet('Reste · ' + esc(monthLabel(m)), h, `<button class="btn full" data-act="close">J’ai compris</button>`);
+}
 function act(name, b) {
   switch (name) {
+    case 'reste-info': resteSheet(); break;
     case 'tab': ui.tab = b.dataset.tab; ui.page = null; render(); scrollTo(0, 0); break;
     case 'page': ui.tab = 'plus'; ui.page = b.dataset.page; render(); scrollTo(0, 0); break;
     case 'back': ui.page = null; render(); break;

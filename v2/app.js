@@ -257,8 +257,10 @@ function pendingDeferred(acc = '') {
   return state.transactions.filter(t => t.payment === 'deferred' && !isPlanned(t) && t.dueDate > t0 && (!acc || t.account === acc)).sort((a, b) => b.date.localeCompare(a.date));
 }
 /* Solde prévu en fin de mois (mois courant ou futur) */
-function forecast(month, acc = '') {
-  const end = endOfMonth(month), cur = thisMonth();
+function forecast(month, acc = '') { return forecastAt(endOfMonth(month), acc); }
+/* Solde prévu à une date précise (échéances et carte différée comprises) */
+function forecastAt(end, acc = '') {
+  const month = end.slice(0, 7), cur = thisMonth();
   let total = 0, missing = 0;
   for (const a of activeAccounts()) { if (acc && a.id !== acc) continue; const b = balance(a.id, end); if (b === null) missing++; else total += b; }
   const has = id => { const a = accountById(id); return a && a.opening != null && !a.archived && (!acc || id === acc); };
@@ -275,6 +277,29 @@ function forecast(month, acc = '') {
     if (monthIndex(month) - monthIndex(m) > 24) break;
   }
   return { total, missing };
+}
+const prevDay = d => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() - 1); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
+/* Prochain revenu prévu (échéance) après aujourd'hui */
+function nextIncome(acc = '', from = today()) {
+  for (let m = from.slice(0, 7), i = 0; i < 3; i++, m = addMonths(m, 1)) {
+    const l = dueList(m, acc).filter(d => d.type === 'income' && d.date > from && (!acc || d.account === acc));
+    if (l.length) return l[0];
+  }
+  return null;
+}
+/* Revenus / dépenses encore prévus (pas encore passés) qui comptent pour le budget du mois */
+function monthPlanned(month, group = 'all', acc = '') {
+  const r = { income: 0, expense: 0 };
+  const add = d => {
+    if (d.type === 'transfer' || (acc && d.account !== acc)) return;
+    const g = groupOf(d.category);
+    if (group === 'perso' && g === 'bungalow') return;
+    if (group === 'bungalow' && g !== 'bungalow') return;
+    r[d.type] += d.amount;
+  };
+  for (const d of dueList(month, acc)) if (!d.sched?.nextMonthBudget && !(d.tx?.budgetMonth && d.tx.budgetMonth !== month)) add(d);
+  for (const d of dueList(addMonths(month, -1), acc)) if (d.sched?.nextMonthBudget) add(d);
+  return r;
 }
 
 /* ---------- Création d'opérations ---------- */
