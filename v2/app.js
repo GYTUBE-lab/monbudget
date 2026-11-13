@@ -70,14 +70,29 @@ const PRESET = [
 ];
 const CHANNELS = ['Location en direct', 'Airbnb', 'Booking'];
 const presetCategories = () => [...PRESET.map(([name, group, kind, subs]) => ({ name, group, kind, subs: [...subs], hidden: false })), { name: SYSTEM.transfer, group: 'perso', kind: 'out', subs: [], hidden: true }, { name: SYSTEM.settlement, group: 'perso', kind: 'out', subs: [], hidden: true }];
+/* Groupes de catégories : « Vie courante » (fixe) + groupes libres. tab = suivi à part (onglet sur l'accueil, hors « Personnel ») */
+const DEFAULT_GROUPS = () => [{ id: 'perso', name: 'Vie courante', tab: false }, { id: 'bungalow', name: 'Bungalow', tab: true }, { id: 'ventes', name: 'Ventes diverses', tab: false }];
+const groupsList = () => state.groups || DEFAULT_GROUPS();
+const groupById = id => groupsList().find(g => g.id === id);
+const groupName = id => groupById(id)?.name || 'Vie courante';
+const tabGroups = () => groupsList().filter(g => g.tab && g.id !== 'perso');
+/* view : 'all' | 'perso' (tout sauf les groupes suivis à part) | id d'un groupe */
+function inView(category, view) {
+  if (!view || view === 'all') return true;
+  const g = groupOf(category);
+  if (view === 'perso') return !groupById(g)?.tab || g === 'perso';
+  return g === view;
+}
 const guessGroup = n => /^bungalow/i.test(n) ? 'bungalow' : /^ventes?/i.test(n) ? 'ventes' : 'perso';
 
 /* ---------- État ---------- */
-const blank = () => ({ v: 2, accounts: [], transactions: [], schedules: [], categories: presetCategories(), budgets: {}, imports: [], settings: { bungalowRates: { Airbnb: 15, Booking: 17 } }, createdAt: today() });
+const blank = () => ({ v: 2, groups: DEFAULT_GROUPS(), accounts: [], transactions: [], schedules: [], categories: presetCategories(), budgets: {}, imports: [], settings: { bungalowRates: { Airbnb: 15, Booking: 17 } }, createdAt: today() });
 let state;
 function validate(s) {
   if (!s || typeof s !== 'object' || s.v !== 2) throw Error('Ce fichier n’est pas une sauvegarde de Mon Budget v2.');
   for (const k of ['accounts', 'transactions', 'schedules', 'categories', 'imports']) { s[k] ||= []; if (!Array.isArray(s[k])) throw Error('Sauvegarde invalide (' + k + ').'); }
+  if (!Array.isArray(s.groups) || !s.groups.length) s.groups = DEFAULT_GROUPS();
+  if (!s.groups.some(g => g.id === 'perso')) s.groups.unshift({ id: 'perso', name: 'Vie courante', tab: false });
   s.budgets ||= {}; s.settings ||= {}; s.settings.bungalowRates ||= { Airbnb: 15, Booking: 17 };
   for (const a of s.accounts) if (!a || typeof a.id !== 'string' || typeof a.name !== 'string') throw Error('Compte invalide.');
   const ids = new Set(s.accounts.map(a => a.id));
@@ -169,7 +184,7 @@ const cashDate = t => t.payment === 'deferred' ? (t.dueDate || t.date) : t.date;
 const cashDelta = t => t.treatment === 'settlement' ? 0 : (t.type === 'income' ? t.amount : -t.amount);
 const parts = t => t.splits?.length ? t.splits.map(l => ({ category: l.category, subcategory: l.subcategory || '', amount: l.amount })) : [{ category: t.category, subcategory: t.subcategory || '', amount: t.amount }];
 const catByName = n => state.categories.find(c => c.name === n);
-const groupOf = n => catByName(n)?.group || guessGroup(n);
+const groupOf = n => { const g = catByName(n)?.group || guessGroup(n); return groupById(g) ? g : 'perso'; };
 function balance(accId, at = today()) {
   const a = accountById(accId); if (!a || a.opening == null) return null;
   let b = a.opening;
@@ -187,9 +202,7 @@ function monthTotals(month, group = 'all', acc = '') {
   for (const t of state.transactions) {
     if (!inBudget(t) || budgetMonthOf(t) !== month || (acc && t.account !== acc)) continue;
     for (const p of parts(t)) {
-      const g = groupOf(p.category);
-      if (group === 'perso' && g === 'bungalow') continue;
-      if (group === 'bungalow' && g !== 'bungalow') continue;
+      if (!inView(p.category, group)) continue;
       r[t.type] += p.amount;
       const k = t.type + '|' + p.category; r.byCat[k] = (r.byCat[k] || 0) + p.amount;
       const ks = k + '|' + p.subcategory; r.bySub[ks] = (r.bySub[ks] || 0) + p.amount;
@@ -325,9 +338,7 @@ function monthPlanned(month, group = 'all', acc = '') {
   const r = { income: 0, expense: 0 };
   const add = d => {
     if (d.type === 'transfer' || (acc && d.account !== acc)) return;
-    const g = groupOf(d.category);
-    if (group === 'perso' && g === 'bungalow') return;
-    if (group === 'bungalow' && g !== 'bungalow') return;
+    if (!inView(d.category, group)) return;
     r[d.type] += d.amount;
   };
   for (const d of dueList(month, acc)) if (!d.sched?.nextMonthBudget && !(d.tx?.budgetMonth && d.tx.budgetMonth !== month)) add(d);

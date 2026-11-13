@@ -18,11 +18,11 @@ const formAcc = () => { const a = ui.acc && accountById(ui.acc); return a && !a.
 
 /* ---------- État de l'interface ---------- */
 const ui = { tab: 'home', page: null, month: thisMonth(), acc: '', group: 'all', ops: 'all', q: '', year: new Date().getFullYear(), bilanGroup: 'all', onboard: null };
-try { const g = localStorage.getItem('mb2-ui-group'); if (['all', 'perso', 'bungalow'].includes(g)) ui.group = g; } catch {}
+try { const g = localStorage.getItem('mb2-ui-group'); if (g) ui.group = g; } catch {}
 const toast = (msg, ms = 2600) => { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), ms); };
 const amtCls = t => t.treatment === 'transfer' || t.treatment === 'settlement' ? 'tiny' : t.type === 'income' ? 'pos' : 'neg';
 const accOptions = (sel, all = false, archived = false) => (all ? `<option value="">Tous comptes</option>` : '') + state.accounts.filter(a => archived || !a.archived || a.id === sel).map(a => `<option value="${esc(a.id)}" ${a.id === sel ? 'selected' : ''}>${esc(a.name)}${a.archived ? ' (archivé)' : ''}</option>`).join('');
-const catOptions = (sel, type) => { const groups = { perso: 'Vie courante', bungalow: 'Bungalow', ventes: 'Ventes' }; return Object.entries(groups).map(([g, l]) => { const cs = visibleCategories(type).filter(c => c.group === g || (g === 'perso' && !groups[c.group])); return cs.length ? `<optgroup label="${l}">${cs.map(c => `<option ${c.name === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''; }).join('') + (sel && !visibleCategories(type).some(c => c.name === sel) ? `<option selected>${esc(sel)}</option>` : ''); };
+const catOptions = (sel, type) => { const groups = Object.fromEntries(groupsList().map(g => [g.id, g.name])); return Object.entries(groups).map(([g, l]) => { const cs = visibleCategories(type).filter(c => c.group === g || (g === 'perso' && !groups[c.group])); return cs.length ? `<optgroup label="${l}">${cs.map(c => `<option ${c.name === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''; }).join('') + (sel && !visibleCategories(type).some(c => c.name === sel) ? `<option selected>${esc(sel)}</option>` : ''); };
 const monthNav = (light = false) => `<div class="month${light ? ' light' : ''}"><button data-act="month" data-d="-1" aria-label="Mois précédent">${ic('l', 16, 2.4)}</button><span>${esc(monthLabel(ui.month))}</span><button data-act="month" data-d="1" aria-label="Mois suivant">${ic('r', 16, 2.4)}</button></div>`;
 const showAccounts = () => activeAccounts().length > 1;
 function txRow(t, showDate = false) {
@@ -57,9 +57,11 @@ const syncChip = () => `<button class="chip" id="syncChip" data-act="sync-chip" 
 
 /* ---------- Accueil ---------- */
 function home() {
+  if (ui.group !== 'all' && ui.group !== 'perso' && !tabGroups().some(x => x.id === ui.group)) ui.group = 'all';
   const m = ui.month, acc = ui.acc, g = ui.group;
-  const seg = ['all:Tout', 'perso:Personnel', 'bungalow:Bungalow'].map(x => { const [k, l] = x.split(':'); return `<button data-act="group" data-g="${k}" aria-pressed="${g === k}">${l}</button>`; }).join('');
-  let h = `<header class="top"><div class="top-row"><h1>Mon Budget</h1>${syncChip()}</div><div class="ctrls">${monthNav()}${showAccounts() ? `<label class="visually-hidden" for="accSel">Compte</label><select id="accSel" data-change="acc">${accOptions(acc, true)}</select>` : ''}</div><div class="seg" role="group" aria-label="Vue">${seg}</div></header><main class="lift">`;
+  const views = [['all', 'Tout'], ...(tabGroups().length ? [['perso', 'Personnel'], ...tabGroups().map(x => [x.id, x.name])] : [])];
+  const seg = views.length > 1 ? views.map(([k, l]) => `<button data-act="group" data-g="${esc(k)}" aria-pressed="${g === k}">${esc(l)}</button>`).join('') : '';
+  let h = `<header class="top"><div class="top-row"><h1>Mon Budget</h1>${syncChip()}</div><div class="ctrls">${monthNav()}${showAccounts() ? `<label class="visually-hidden" for="accSel">Compte</label><select id="accSel" data-change="acc">${accOptions(acc, true)}</select>` : ''}</div>${seg ? `<div class="seg" role="group" aria-label="Vue">${seg}</div>` : ''}</header><main class="lift">`;
   h += g === 'bungalow' ? homeBungalow(m, acc) : homeMain(m, acc, g);
   return h + '</main>';
 }
@@ -79,10 +81,10 @@ function homeMain(m, acc, g) {
   if (m >= cur) { const f = forecast(m, acc); rows.push(`<button class="row-item" data-act="tab" data-tab="due"><span class="ico g">${ic('cal', 18)}</span><span class="grow"><span class="t" style="display:block">Fin ${m === cur ? 'du mois' : 'de ' + esc(MONTHS[Number(m.slice(5)) - 1])} prévue</span><span class="s" style="display:block">Avec les échéances et la carte différée</span></span><span class="amt">${money(f.total)}</span></button>`); }
   if (rows.length) h += `<section class="card list">${rows.join('')}</section>`;
   /* Enveloppes */
-  const env = Object.entries(state.budgets).filter(([c, v]) => v > 0 && (g === 'all' || (groupOf(c) === 'bungalow') === (g === 'bungalow'))).map(([c, v]) => ({ c, v, spent: tot.byCat['expense|' + c] || 0 })).sort((a, b) => b.spent / b.v - a.spent / a.v);
+  const env = Object.entries(state.budgets).filter(([c, v]) => v > 0 && inView(c, g)).map(([c, v]) => ({ c, v, spent: tot.byCat['expense|' + c] || 0 })).sort((a, b) => b.spent / b.v - a.spent / a.v);
   if (env.length) h += `<section class="card"><div class="head" style="margin-bottom:10px"><h2>Enveloppes</h2><button class="link" data-act="page" data-page="budgets">Tout voir</button></div>${env.slice(0, 4).map(e => envRow(e)).join('')}</section>`;
   /* Dernières opérations */
-  const ops = monthTx(m, acc).filter(t => !isPlanned(t)).filter(t => g === 'all' || t.treatment === 'transfer' || (groupOf(t.category) === 'bungalow') === (g === 'bungalow')).slice(0, 6);
+  const ops = monthTx(m, acc).filter(t => !isPlanned(t)).filter(t => t.treatment === 'transfer' || inView(t.category, g)).slice(0, 6);
   h += `<section class="card list"><div class="head"><h2>Dernières opérations</h2><button class="link" data-act="tab" data-tab="ops">Tout voir</button></div>${ops.length ? ops.map(t => txRow(t, true)).join('') : `<p class="empty">Aucune opération en ${esc(monthLabel(m).toLowerCase())}. Touchez + pour en ajouter.</p>`}</section>`;
   return h;
 }
@@ -228,10 +230,12 @@ const PAGES = {
     return h + '</main>';
   },
   cats() {
-    const groups = { perso: 'Vie courante', bungalow: 'Bungalow', ventes: 'Ventes diverses' };
+    const groups = Object.fromEntries(groupsList().map(g => [g.id, g.name]));
     let h = subTop('Catégories') + '<main>';
+    h += `<p class="small" style="margin:0">Un <b>groupe</b> rassemble des catégories (ex. Vie courante, Bungalow, Ventes). Un groupe « suivi à part » a son propre onglet sur l’accueil et n’entre pas dans « Personnel ».</p><button class="btn ghost full" data-act="groups">Gérer les groupes (${groupsList().length})</button>`;
     for (const [g, l] of Object.entries(groups)) {
       const cs = state.categories.filter(c => (c.group === g || (g === 'perso' && !groups[c.group])) && !Object.values(SYSTEM).includes(c.name));
+      if (!cs.length) { h += `<div class="sec">${esc(l)}</div><p class="tiny" style="margin:0 0 8px">Aucune catégorie : créez-en une avec ce groupe.</p>`; continue; }
       h += `<div class="sec">${l}</div><section class="card list">${cs.map(c => `<button class="row-item" data-act="form" data-form="category" data-name="${esc(c.name)}"><span class="grow"><span class="t" style="display:block;${c.hidden ? 'color:var(--muted);text-decoration:line-through' : ''}">${esc(c.name)}</span><span class="s" style="display:block">${c.kind === 'in' ? 'Revenu' : 'Dépense'}${c.subs.length ? ' · ' + c.subs.length + ' sous-catégorie' + (c.subs.length > 1 ? 's' : '') : ''}${c.hidden ? ' · masquée' : ''}</span></span>${ic('r', 18)}</button>`).join('')}</section>`;
     }
     return h + `<button class="btn full" data-act="form" data-form="category">${ic('plus', 18)} Nouvelle catégorie</button><button class="btn ghost full" data-act="restore-preset">Rajouter les catégories proposées manquantes</button></main>`;
@@ -803,12 +807,29 @@ function budgetSheet(cat) {
     save: () => { const c = cat || val('cat'); const v = val('v') ? parseAmount(val('v')) : 0; if (isNaN(v) || v < 0) return alert('Montant incorrect.'); if (v) state.budgets[c] = v; else delete state.budgets[c]; save(); closeSheet(); render(); }
   }, { focus: '[name=v]' });
 }
+/* Groupes */
+function groupsSheet() {
+  const count = id => state.categories.filter(c => groupOf(c.name) === id && !Object.values(SYSTEM).includes(c.name)).length;
+  const body = `<p class="small" style="margin:0">Cochez « Suivi à part » pour une activité à suivre séparément (location, vente…) : elle aura son onglet sur l’accueil.</p>`
+    + groupsList().map((g, i) => `<div class="split-card"><div style="display:flex;gap:8px;align-items:center"><input class="in" data-gi="${i}" name="gname${i}" value="${esc(g.name)}" aria-label="Nom du groupe" ${g.id === 'perso' ? '' : ''} style="flex:1">${g.id === 'perso' ? '' : `<button type="button" class="x" data-act="g-del" data-i="${i}" aria-label="Supprimer le groupe ${esc(g.name)}">${ic('trash', 16)}</button>`}</div>
+      <div class="tiny" style="margin-top:6px;display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${count(g.id)} catégorie(s)${g.id === 'perso' ? ' · groupe de base' : ''}</span>${g.id === 'perso' ? '' : `<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="gtab${i}" ${g.tab ? 'checked' : ''}> Suivi à part</label>`}</div></div>`).join('')
+    + `<div style="display:flex;gap:8px"><input class="in" name="gnew" placeholder="Nouveau groupe (ex. Location appartement)" style="flex:1" autocomplete="off"><button type="button" class="btn" data-act="g-add">Ajouter</button></div>`;
+  const read = () => { const e = sf().elements; state.groups = groupsList().map((g, i) => ({ ...g, name: (e['gname' + i]?.value || g.name).trim() || g.name, tab: g.id === 'perso' ? false : !!e['gtab' + i]?.checked })); };
+  openSheet('Groupes', body, `<button class="btn full" data-act="save">Enregistrer</button>`, {
+    'g-add': () => { read(); const n = val('gnew').trim(); if (!n) return; if (groupsList().some(g => norm(g.name) === norm(n))) return alert('Ce groupe existe déjà.'); state.groups.push({ id: 'g' + uid().slice(0, 8), name: n, tab: true }); save(); groupsSheet(); toast('Groupe ajouté'); },
+    'g-del': b => { read(); const g = state.groups[Number(b.dataset.i)], n = count(g.id);
+      if (!confirm(`Supprimer le groupe « ${g.name} » ?` + (n ? `\nSes ${n} catégorie(s) passeront dans « Vie courante » (rien n’est perdu).` : ''))) return;
+      for (const c of state.categories) if (c.group === g.id) c.group = 'perso';
+      state.groups = state.groups.filter(x => x.id !== g.id); if (ui.group === g.id) ui.group = 'all'; save(); groupsSheet(); toast('Groupe supprimé'); },
+    save: () => { read(); save(); closeSheet(); render(); toast('Groupes enregistrés'); }
+  });
+}
 /* Catégorie */
 function categoryForm(name) {
   const c = name ? catByName(name) : { name: '', group: 'perso', kind: 'out', subs: [], hidden: false };
   const used = name ? state.transactions.filter(t => parts(t).some(p => p.category === name)).length : 0;
   const body = `<label class="f">Nom<input name="name" value="${esc(c.name)}" autocomplete="off"></label>
-  <div class="grid2"><label class="f">Groupe<select name="group">${[['perso', 'Vie courante'], ['bungalow', 'Bungalow'], ['ventes', 'Ventes diverses']].map(([v, l]) => `<option value="${v}" ${c.group === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label><label class="f">Plutôt<select name="kind"><option value="out" ${c.kind !== 'in' ? 'selected' : ''}>Dépense</option><option value="in" ${c.kind === 'in' ? 'selected' : ''}>Revenu</option></select></label></div>
+  <div class="grid2"><label class="f">Groupe<select name="group">${groupsList().map(g => `<option value="${esc(g.id)}" ${groupOf(c.name || '') === g.id && (c.group === g.id || !groupById(c.group)) ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label><label class="f">Plutôt<select name="kind"><option value="out" ${c.kind !== 'in' ? 'selected' : ''}>Dépense</option><option value="in" ${c.kind === 'in' ? 'selected' : ''}>Revenu</option></select></label></div>
   <fieldset><legend>Sous-catégories</legend><div class="pills" id="subs">${c.subs.map((s, i) => `<span class="pill s" style="display:inline-flex;align-items:center;gap:4px">${esc(s)}<button type="button" class="link" data-act="sub-del" data-i="${i}" aria-label="Retirer ${esc(s)}" style="padding:0 2px">${ic('x', 14)}</button></span>`).join('') || '<span class="tiny">Aucune</span>'}</div><div style="display:flex;gap:8px;margin-top:10px"><input class="in" name="newsub" placeholder="Nouvelle sous-catégorie"><button type="button" class="btn sm" data-act="sub-add">Ajouter</button></div></fieldset>
   ${name ? `<label class="toggle"><input type="checkbox" name="hidden" ${c.hidden ? 'checked' : ''}> Masquer (n’est plus proposée ; l’historique reste)</label><p class="tiny" style="margin:0">${used} opération${used > 1 ? 's' : ''} dans cette catégorie. Un nouveau nom est appliqué à toutes.</p>` : ''}`;
   const subs = [...c.subs];
@@ -844,7 +865,7 @@ function resteSheet() {
   const tot = monthTotals(m, g, acc), pl = m >= cur ? monthPlanned(m, g, acc) : { income: 0, expense: 0 };
   const r0 = tot.income - tot.expense, r1 = r0 + pl.income - pl.expense, mon = esc(monthLabel(m).toLowerCase());
   const kv = (k, v, cls = '', bold = false) => `<div class="kv${bold ? ' tot' : ''}"><span>${k}</span><span class="num ${cls}">${v}</span></div>`;
-  let h = `<p class="small" style="margin:0 0 10px">Le <b>Reste</b>, c’est vos <b>revenus moins vos dépenses</b> comptés pour ${mon}${g === 'perso' ? ' (vue Personnel : sans le bungalow)' : g === 'bungalow' ? ' (bungalow seulement)' : ''}. C’est le résultat du budget du mois, <b>pas l’argent sur vos comptes</b>.</p>`;
+  let h = `<p class="small" style="margin:0 0 10px">Le <b>Reste</b>, c’est vos <b>revenus moins vos dépenses</b> comptés pour ${mon}${g === 'perso' ? ' (vue Personnel : sans ' + esc(tabGroups().map(x => x.name).join(', ')) + ')' : g !== 'all' ? ' (' + esc(groupName(g)) + ' seulement)' : ''}. C’est le résultat du budget du mois, <b>pas l’argent sur vos comptes</b>.</p>`;
   h += `<div class="kvbox">${kv('Revenus déjà comptés', '+' + money(tot.income), 'pos')}${kv('Dépenses déjà comptées', '−' + money(tot.expense), 'neg')}${kv('Reste à ce jour', money(r0), r0 < 0 ? 'neg' : '', true)}</div>`;
   if (pl.income || pl.expense) h += `<div class="kvbox">${kv('Revenus encore prévus', '+' + money(pl.income), 'pos')}${kv('Dépenses encore prévues', '−' + money(pl.expense), 'neg')}${kv('Reste prévu fin ' + mon.split(' ')[0], money(r1), r1 < 0 ? 'neg' : '', true)}</div>`;
   if (m === cur) {
@@ -865,6 +886,7 @@ function act(name, b) {
     case 'back': ui.page = null; render(); break;
     case 'month': ui.month = addMonths(ui.month, Number(b.dataset.d)); render(); break;
     case 'year': ui.year += Number(b.dataset.d); render(); break;
+    case 'groups': groupsSheet(); break;
     case 'group': ui.group = b.dataset.g; try { localStorage.setItem('mb2-ui-group', ui.group); } catch {} render(); break;
     case 'bilan-group': ui.bilanGroup = b.dataset.g; render(); break;
     case 'ops-filter': ui.ops = b.dataset.f; render(); break;

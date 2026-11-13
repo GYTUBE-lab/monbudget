@@ -1,189 +1,21 @@
-MON BUDGET — APPLICATION ANDROID, iPHONE/iPAD ET WINDOWS
-AVEC SAUVEGARDE AUTOMATIQUE DANS GOOGLE DRIVE
-=========================================================
+MON BUDGET — ANDROID, iPHONE/iPAD ET WINDOWS
+Sauvegarde automatique dans votre Google Drive
+==============================================
 
-*****************************************************************
-NOUVEAU : DEUX VERSIONS À COMPARER
-*****************************************************************
-Ce dossier contient deux versions qui fonctionnent côte à côte :
+Adresse : https://gytube-lab.github.io/monbudget/v2/
 
-  Version actuelle   https://monbuget.netlify.app
-  Version 2 (v2)     https://monbuget.netlify.app/v2/
-                     (dossier « v2 » à l'intérieur de MonBudget)
+INSTALLER L'ICÔNE
+- iPhone/iPad : ouvrir l'adresse dans Safari > bouton Partager > « Sur l'écran d'accueil ».
+- Android : ouvrir dans Chrome > menu ⋮ > « Installer l'application ».
+- Windows : ouvrir dans Chrome ou Edge > icône d'installation dans la barre d'adresse.
 
-La v2 est la version simplifiée (style lagon, onglets en bas,
-dépense en 4 champs, échéances à cocher, carte différée calculée
-toute seule, comptes personnalisables, revenu bungalow).
+SAUVEGARDE
+Plus > Sauvegardes > Activer Google Drive. Chaque utilisateur se connecte
+avec SON compte Google : les budgets restent totalement séparés.
 
-SES DONNÉES SONT SÉPARÉES : sur l'appareil et dans un autre fichier
-Google Drive (« Mon Budget v2 - données.json »). Ce que vous faites
-dans la v2 ne modifie jamais la version actuelle.
+ADAPTER À SON PROFIL
+- Comptes : Plus > Mes comptes (ajouter, renommer, archiver, supprimer).
+- Catégories et groupes : Plus > Catégories (« Gérer les groupes »).
 
-MISE EN LIGNE (une fois)
-  1. Décompressez MonBudget.zip.
-  2. Netlify → projet « monbuget » → déposez le dossier MonBudget
-     entier (il contient le dossier v2) dans « Drop a folder ».
-  3. Google Cloud → Google Auth Platform → Clients → Mon Budget →
-     « URI de redirection autorisés » → + Ajouter un URI :
-         https://monbuget.netlify.app/v2/
-     → Enregistrer. (L'origine ne change pas.)
-
-INSTALLATION DE LA v2
-  iPhone (Safari) : ouvrez https://monbuget.netlify.app/v2/
-     → Partager □↑ → « Sur l'écran d'accueil » → nommez-la
-     « Budget v2 ».
-  PC (Edge/Chrome) : ouvrez l'adresse → icône ⊕ « Installer ».
-  Vous avez alors deux icônes : la version actuelle et la v2.
-
-PREMIÈRE OUVERTURE DE LA v2
-  • Sur un appareil où la version actuelle contient déjà vos
-    données (votre PC) : « Copier mes données actuelles ».
-  • Sur un appareil vide (iPhone) : « Récupérer depuis Google
-    Drive ». La v2 trouve les données de la version actuelle dans
-    votre Drive et propose d'en faire une copie.
-  • Ou « Commencer avec un budget vide » (pour votre amie).
-
-PENDANT LA COMPARAISON
-  Une opération saisie dans une version n'apparaît pas dans
-  l'autre. Pour la v2, vous pouvez à tout moment refaire une copie
-  fraîche : Plus › Sauvegardes › « Recopier les données de la
-  version actuelle ».
-  Le jour où vous choisissez la v2, elle remplacera la version
-  actuelle à l'adresse principale, avec vos données.
-*****************************************************************
-
-Mon Budget s'installe sur Android, iPhone/iPad et Windows (icône, plein
-écran, fonctionne hors connexion).
-
-Vos données sont enregistrées à DEUX endroits :
-  • sur l'appareil (pour fonctionner sans internet) ;
-  • dans votre Google Drive, fichier « Mon Budget - données.json »,
-    mis à jour automatiquement à chaque modification.
-
-Si le cache est vidé, si vous changez de téléphone ou si vous utilisez
-le PC : connectez-vous à Google Drive dans l'application, vos données
-reviennent. Le téléphone et le PC partagent les mêmes données.
-
-CONTENU DU DOSSIER
-  index.html            l'application
-  config.js             à compléter une fois (étape 3)
-  drive-sync.js         sauvegarde Google Drive
-  sw.js, manifest...    installation et mode hors connexion
-  icons/                icônes
-
-Mise en place : environ 20 minutes, une seule fois, gratuite.
-Faites-la sur un ordinateur.
-
-=================================================================
-ÉTAPE 1 — METTRE L'APPLICATION EN LIGNE (Netlify, gratuit)
-=================================================================
-1. Décompressez MonBudget.zip.
-2. Ouvrez https://app.netlify.com/drop et créez un compte gratuit
-   (« Sign up with Google » est le plus simple).
-3. Faites glisser le dossier « MonBudget » dans la page.
-4. Notez l'adresse obtenue, du type https://xxxx.netlify.app
-   Conseil : Site configuration → Change site name, par exemple
-   https://monbudget-guy.netlify.app (gardez ensuite cette adresse).
-
-Le site ne contient que le programme, jamais vos chiffres.
-
-=================================================================
-ÉTAPE 2 — AUTORISER L'ACCÈS À GOOGLE DRIVE (Google Cloud, gratuit)
-=================================================================
-Les menus Google peuvent légèrement changer de nom ; le principe reste
-le même.
-
-1. Ouvrez https://console.cloud.google.com avec votre compte Google.
-   Acceptez les conditions si c'est la première fois.
-2. En haut, sélecteur de projet → « Nouveau projet » →
-   nom : Mon Budget → Créer. Vérifiez que ce projet est sélectionné.
-3. Menu ☰ → « API et services » → « Bibliothèque » →
-   cherchez « Google Drive API » → « Activer ».
-4. Menu ☰ → « API et services » → « Écran de consentement OAuth »
-   (ou « Google Auth Platform ») → « Commencer » :
-     - Nom de l'application : Mon Budget
-     - Adresse e-mail d'assistance : votre adresse
-     - Audience : Externe
-     - Coordonnées : votre adresse → Créer.
-5. Dans « Audience » → « Utilisateurs tests » → « Ajouter des
-   utilisateurs » → ajoutez votre adresse Gmail (et celle de toute
-   personne qui utilisera l'application) → Enregistrer.
-6. Dans « Clients » (ou « Identifiants » → « Créer des identifiants »
-   → « ID client OAuth ») :
-     - Type d'application : Application Web
-     - Nom : Mon Budget
-     - Origines JavaScript autorisées : ajoutez
-           https://xxxx.netlify.app          (VOTRE adresse, sans / final)
-     - URI de redirection autorisés : ajoutez
-           https://xxxx.netlify.app/         (la même, AVEC / final)
-     → Créer.
-7. Copiez l'« ID client » affiché :
-   il ressemble à 123456789-abc...xyz.apps.googleusercontent.com
-
-L'application n'utilise que l'autorisation « drive.file » : elle voit
-uniquement le fichier qu'elle a créé, jamais vos autres documents.
-
-=================================================================
-ÉTAPE 3 — METTRE L'ID CLIENT DANS L'APPLICATION
-=================================================================
-1. Ouvrez config.js avec le Bloc-notes (clic droit → Ouvrir avec).
-2. Collez l'ID client entre les apostrophes de la dernière ligne :
-     window.MON_BUDGET_GOOGLE_CLIENT_ID = '123456789-abc.apps.googleusercontent.com';
-3. Enregistrez.
-4. Sur Netlify : votre site → « Deploys » → faites glisser à nouveau
-   le dossier MonBudget dans la zone prévue. L'adresse ne change pas.
-
-(Autre possibilité : coller l'ID client dans l'application,
- Sauvegardes → Sauvegarde automatique Google Drive → Configuration.
- Il faudrait alors le faire sur chaque appareil.)
-
-=================================================================
-ÉTAPE 4 — INSTALLER ET CONNECTER CHAQUE APPAREIL
-=================================================================
-ANDROID (Chrome) : ouvrez l'adresse → « Installer l'application »
-  (ou menu ⋮ → Installer l'application).
-iPHONE / iPAD (Safari) : ouvrez l'adresse → Partager □↑ →
-  « Sur l'écran d'accueil ».
-WINDOWS (Edge ou Chrome) : ouvrez l'adresse → « Installer
-  l'application » dans le menu de gauche ou icône ⊕ de la barre
-  d'adresse.
-
-Puis, dans l'application installée, touchez l'indicateur
-« ☁ Activer la sauvegarde Drive » en haut, choisissez votre compte
-Google et acceptez. Google affiche « Google n'a pas validé cette
-application » : c'est normal pour une application personnelle,
-touchez « Continuer ». Cochez l'accès à Google Drive si demandé.
-
-=================================================================
-REPRENDRE VOS DONNÉES ACTUELLES
-=================================================================
-Vos opérations sont aujourd'hui dans l'ancienne version (fichier HTML
-ouvert dans votre navigateur). Pour les transférer :
-1. Dans l'ancienne version : Sauvegardes → « Télécharger une sauvegarde ».
-2. Dans la nouvelle application : Sauvegardes → « Restaurer une
-   sauvegarde » → choisissez ce fichier.
-3. Connectez Google Drive : les données y sont envoyées.
-Faites-le sur UN appareil, puis connectez les autres : ils récupèrent
-tout automatiquement.
-
-=================================================================
-UTILISATION AU QUOTIDIEN
-=================================================================
-• L'indicateur ☁ en haut montre l'état : « Drive à jour »,
-  « Envoi en attente », « Hors connexion », « Reconnecter Google Drive ».
-• Sans internet, tout fonctionne ; l'envoi se fait au retour du réseau.
-• La connexion Google dure environ une heure. L'application se
-  reconnecte seule à l'ouverture ; sinon, un appui sur ☁ suffit.
-• Vous passez d'un appareil à l'autre : à l'ouverture, l'application
-  récupère les dernières données de Drive.
-• Si deux appareils ont été modifiés sans connexion, l'application
-  demande quelle version garder. L'autre version est conservée dans
-  l'historique automatique (Sauvegardes) et dans l'historique des
-  versions du fichier sur Google Drive (clic droit → Gérer les versions).
-• Ne supprimez pas et ne modifiez pas à la main le fichier
-  « Mon Budget - données.json » dans Drive.
-• Une sauvegarde JSON téléchargée de temps en temps reste une bonne
-  précaution supplémentaire.
-
-Mises à jour de l'application : déposez le nouveau dossier dans
-Netlify → Deploys. Les données ne sont pas touchées.
+L'ancienne version (v1) a été retirée : l'adresse sans « /v2/ » ouvre
+directement la nouvelle version.
