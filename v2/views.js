@@ -747,11 +747,20 @@ function schedulesList(all = !ui.acc) {
 function dueSheet(d) {
   const t0 = today(), multi = d.sched && (schedDays(d.sched).length > 1 || !!d.sched.custom?.length), tr = d.type === 'transfer';
   const what = tr ? 'Virement ' + esc(accName(d.account)) + ' → ' + esc(accName(d.toAccount)) : esc(d.category) + ' · ' + esc(accName(d.account));
-  openSheet(esc(d.label), `${d.sched?.note ? `<div class="b">${esc(d.sched.note)}</div>` : ''}<div class="small">${what} · prévue le ${dateFR(d.date)}</div><label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant ${tr ? 'viré' : 'passé sur le compte'}</span><input name="amount" class="amount-in ${d.type === 'income' ? 'inc' : tr ? '' : ''}" style="${tr ? 'color:var(--ink)' : ''}" inputmode="decimal" value="${amountInput(d.amount)}"></label>${dateField('date', d.date <= t0 ? d.date : t0, 'date', 'Date')}${d.sched ? `<label class="toggle"><input type="checkbox" name="keep"> Ce nouveau montant s’applique aussi aux prochaines fois</label><button type="button" class="btn ghost full" data-act="sched-edit">${ic('edit', 18)} Modifier l’échéance (montant, jours, compte…)</button>` : `<button type="button" class="btn ghost full" data-act="edit">${ic('edit', 18)} Modifier l’opération prévue</button>`}`,
+  openSheet(esc(d.label), `${d.sched?.note ? `<div class="b">${esc(d.sched.note)}</div>` : ''}<div class="small">${what} · prévue le ${dateFR(d.date)}</div><label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant ${tr ? 'viré' : 'passé sur le compte'}</span><input name="amount" class="amount-in ${d.type === 'income' ? 'inc' : tr ? '' : ''}" style="${tr ? 'color:var(--ink)' : ''}" inputmode="decimal" value="${amountInput(d.amount)}"></label>${dateField('date', d.date <= t0 ? d.date : t0, 'date', 'Date')}${d.sched ? `<label class="toggle"><input type="checkbox" name="keep"> Ce nouveau montant s’applique aussi aux prochaines fois</label>` : ''}<button type="button" class="btn ghost full" data-act="amount-only">${ic('edit', 18)} Changer le montant, pas encore passé</button>${d.sched ? `<button type="button" class="btn ghost full" data-act="sched-edit">${ic('edit', 18)} Modifier l’échéance (montant, jours, compte…)</button>` : `<button type="button" class="btn ghost full" data-act="edit">${ic('edit', 18)} Modifier l’opération prévue</button>`}`,
     `${d.sched ? `<button class="btn ghost" data-act="skip">${multi ? 'Pas cette fois' : 'Pas ce mois-ci'}</button>` : ''}<button class="btn full" data-act="ok">${ic('check', 18, 2.6)} C’est passé</button>`, {
     ok: () => { const a = parseAmount(val('amount')); if (!a || a <= 0) return alert('Montant incorrect.'); if (d.sched && sf().elements.keep?.checked) d.sched.amount = a; try { confirmDue(d, a, val('date')); } catch (e) { return alert(e.message); } save(); closeSheet(); render(); toast('Enregistré'); },
     skip: () => { d.sched.skip = [...new Set([...(d.sched.skip || []), multi ? d.date : d.date.slice(0, 7)])]; save(); closeSheet(); render(); toast(multi ? 'Ignorée pour le ' + dateFR(d.date).slice(0, 5) : 'Ignorée pour ' + monthLabel(d.date.slice(0, 7)).toLowerCase()); },
     edit: () => txForm(d.type, { tx: d.tx }),
+    'amount-only': () => { const a = parseAmount(val('amount')); if (!a || a <= 0) return alert('Montant incorrect.');
+      const keep = d.sched && sf().elements.keep?.checked;
+      if (keep) d.sched.amount = a;
+      if (d.tx) { d.tx.amount = a; if (d.tx.transferId) for (const x of state.transactions) if (x.transferId === d.tx.transferId) x.amount = a; }
+      else if (!keep || a !== d.sched.amount) { // seulement cette fois : on prépare l'opération « prévue » avec ce montant
+        const t = confirmDue(d, a, d.date), legs = t.transferId ? state.transactions.filter(x => x.transferId === t.transferId) : [t];
+        legs.forEach(x => { x.status = 'planned'; });
+      }
+      save(); closeSheet(); render(); toast(keep ? 'Montant changé pour cette fois et les suivantes' : 'Montant changé pour le ' + dateFR(d.date).slice(0, 5)); },
     'sched-edit': () => scheduleForm(d.sched)
   });
 }
