@@ -1,9 +1,9 @@
-/* Mon Budget v2 — sauvegarde Google Drive (fichier séparé de la version actuelle) */
+/* Mon Budget — sauvegarde Google Drive (un fichier par édition, dans le Drive de chaque utilisateur) */
 (function () {
 'use strict';
-const SYNC_KEY = 'mon-budget-v2-sync', TOKEN_KEY = 'mon-budget-gtoken', CID_KEY = 'mon-budget-google-client-id', NONCE_KEY = 'mon-budget-v2-oauth-state', AUTO_KEY = 'mon-budget-v2-auto-login';
+const SYNC_KEY = ED.key + '-sync', TOKEN_KEY = ED.token, CID_KEY = 'mon-budget-google-client-id', NONCE_KEY = ED.key + '-oauth-state', AUTO_KEY = ED.key + '-auto-login';
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
-const FILE_NAME = 'Mon Budget v2 - données.json';
+const FILE_NAME = ED.file;
 const API = 'https://www.googleapis.com/drive/v3/files', UP = 'https://www.googleapis.com/upload/drive/v3/files';
 const readJSON = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } };
 const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -56,13 +56,13 @@ async function findFile(value) {
 }
 async function remoteFile() {
   if (meta.fileId) { try { const f = await (await api(API + '/' + meta.fileId + '?fields=id,version,modifiedTime,trashed')).json(); if (!f.trashed) return f; } catch (e) { if (e.auth) throw e; } }
-  return findFile('data-v2');
+  return findFile(ED.drive);
 }
 const downloadJSON = async id => JSON.parse(await (await api(API + '/' + id + '?alt=media')).text());
 async function upload(fileId) {
   const body = JSON.stringify(state);
   if (fileId) return (await api(UP + '/' + fileId + '?uploadType=media&fields=id,version,modifiedTime', { method: 'PATCH', headers: { 'Content-Type': 'application/json; charset=UTF-8' }, body })).json();
-  const b = 'mb2' + uid().replace(/-/g, ''), m = { name: FILE_NAME, mimeType: 'application/json', description: 'Données de Mon Budget v2. Ne pas modifier à la main.', appProperties: { monBudget: 'data-v2' } };
+  const b = 'mb2' + uid().replace(/-/g, ''), m = { name: FILE_NAME, mimeType: 'application/json', description: 'Données de ' + ED.name + '. Ne pas modifier à la main.', appProperties: { monBudget: ED.drive } };
   const multipart = '--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(m) + '\r\n--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + body + '\r\n--' + b + '--';
   return (await api(UP + '?uploadType=multipart&fields=id,version,modifiedTime', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b }, body: multipart })).json();
 }
@@ -94,12 +94,12 @@ async function sync() {
     const f = await remoteFile();
     if (!f) {
       if (trivial(state)) {
-        const f1 = await findFile('data');
+        const f1 = ED.v1 ? await findFile('data') : null;
         if (f1) {
           const d1 = await downloadJSON(f1.id); status = ''; updateChip();
           const c = await chooseSheet('Copier vos données actuelles ?', `<p style="margin:0">Google Drive contient les données de la <b>version actuelle</b> de Mon Budget (${d1.transactions?.length || 0} opérations).</p><p class="small" style="margin:0">La v2 en fait une copie dans un fichier séparé, « ${FILE_NAME} ». Le fichier de la version actuelle n’est pas modifié.</p>`, [['copy', 'Copier mes données dans la v2', ''], ['later', 'Plus tard']]);
           if (c === 'copy') { state = convertV1(d1); ui.onboard = null; save({ silent: true }); render(); sent(await upload(null)); toast('Données copiées : ' + state.transactions.length + ' opérations'); }
-        } else if (!state.accounts.length) { status = ''; ui.onboard = 'accounts'; render(); toast('Aucune donnée dans votre Drive : décrivez vos comptes pour commencer.', 4000); }
+        } else if (!state.accounts.length) { status = ''; ui.onboard = 'profile'; render(); toast('Aucune donnée dans votre Drive : décrivez vos comptes pour commencer.', 4000); }
         else sent(await upload(null));
       } else sent(await upload(null));
     }

@@ -1,4 +1,4 @@
-/* Mon Budget v2 — écrans et saisie */
+/* Mon Budget — écrans et saisie */
 'use strict';
 const I = (d, s = 22, w = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC = {
@@ -195,7 +195,7 @@ const formAcc = () => { const a = ui.acc && accountById(ui.acc); return a && !a.
 
 /* ---------- État de l'interface ---------- */
 const ui = { tab: 'home', page: null, month: thisMonth(), acc: '', group: 'all', ops: 'all', q: '', year: new Date().getFullYear(), bilanGroup: 'all', onboard: null };
-try { const g = localStorage.getItem('mb2-ui-group'); if (g) ui.group = g; } catch {}
+try { const g = localStorage.getItem(ED.key + '-ui-group'); if (g) ui.group = g; } catch {}
 const toast = (msg, ms = 2600) => { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), ms); };
 const amtCls = t => t.treatment === 'transfer' || t.treatment === 'settlement' ? 'tiny' : t.type === 'income' ? 'pos' : 'neg';
 const accOptions = (sel, all = false, archived = false) => (all ? `<option value="">Tous comptes</option>` : '') + state.accounts.filter(a => archived || !a.archived || a.id === sel).map(a => `<option value="${esc(a.id)}" ${a.id === sel ? 'selected' : ''}>${esc(a.name)}${a.archived ? ' (archivé)' : ''}</option>`).join('');
@@ -431,9 +431,9 @@ const PAGES = {
     h += `<button class="row-item" data-act="export-json"><span class="ico">${ic('dl', 20)}</span><span class="grow"><span class="t" style="display:block">Télécharger une sauvegarde</span><span class="s" style="display:block">Fichier JSON complet, à garder en lieu sûr</span></span></button>`;
     h += `<label class="row-item" style="cursor:pointer"><span class="ico">${ic('up', 20)}</span><span class="grow"><span class="t" style="display:block">Restaurer une sauvegarde</span><span class="s" style="display:block">Sauvegarde v2, ou sauvegarde de la version actuelle</span></span><input type="file" accept=".json,application/json" data-change="restore-json" class="visually-hidden"></label>`;
     h += `<button class="row-item" data-act="export-csv"><span class="ico">${ic('dl', 20)}</span><span class="grow"><span class="t" style="display:block">Exporter les opérations (CSV)</span><span class="s" style="display:block">Pour un tableur</span></span></button>`;
-    if (v1) h += `<button class="row-item" data-act="copy-v1"><span class="ico w">${ic('transfer', 20)}</span><span class="grow"><span class="t" style="display:block">Recopier les données de la version actuelle</span><span class="s" style="display:block">${v1.transactions.length} opérations sur cet appareil · remplace les données v2</span></span></button>`;
+    if (v1) h += `<button class="row-item" data-act="copy-v1"><span class="ico w">${ic('transfer', 20)}</span><span class="grow"><span class="t" style="display:block">Recopier les données de la version actuelle</span><span class="s" style="display:block">${v1.transactions.length} opérations sur cet appareil · remplace les données actuelles</span></span></button>`;
     h += `<button class="row-item" data-act="history"><span class="ico">${ic('clock', 20)}</span><span class="grow"><span class="t" style="display:block">Historique automatique</span><span class="s" style="display:block">Revenir à un des 5 derniers états</span></span></button></section>`;
-    return h + `<button class="btn danger full" data-act="reset">Effacer toutes les données v2 de cet appareil…</button></main>`;
+    return h + `<button class="btn danger full" data-act="reset">Effacer toutes les données de cet appareil…</button></main>`;
   },
   help() {
     const p = (t, s) => `<section class="card"><h2 style="margin-bottom:6px">${t}</h2><p class="small" style="margin:0;line-height:1.55">${s}</p></section>`;
@@ -441,7 +441,7 @@ const PAGES = {
       p('Carte à débit différé', 'Réglez une fois le compte (Plus › Mes comptes › Carte : Différée, jour du débit). Ensuite, chaque achat « Carte » est automatiquement ajouté au débit du mois suivant. Le solde baisse le jour du débit ; le budget compte la dépense le jour de l’achat.') +
       p('Échéances', 'Prélèvements, crédits, salaire, pension : créez-les une fois. Ils apparaissent chaque mois dans « Échéances ». Le jour venu, touchez ✓. Si le montant a changé, touchez la ligne pour le corriger, ou « Pas ce mois-ci ».') +
       p('Bungalow', 'Raccourci + › Revenu bungalow : canal (direct, Airbnb, Booking), dates, montant payé par le voyageur. La commission est calculée et enregistrée à part. L’onglet Bungalow de l’accueil montre le bénéfice du mois et de l’année.') +
-      p('Google Drive', 'Vos données sont copiées dans votre Google Drive (fichier « Mon Budget v2 - données.json »), séparé de la version actuelle. Si le cache est vidé, reconnectez-vous : tout revient.') + '</main>';
+      p('Google Drive', 'Vos données sont copiées dans votre Google Drive (fichier « ' + ED.file + ' »). Si le cache est vidé, reconnectez-vous : tout revient.') + '</main>';
   }
 };
 
@@ -464,11 +464,11 @@ function welcome() {
     const list = state.accounts.map(a => `<div class="card row-item" style="border:0;padding:12px 14px"><span class="ico">${ic('bank', 18)}</span><span class="grow"><span class="t" style="display:block">${esc(a.name)}</span><span class="s" style="display:block">${esc(a.bank || '')} ${a.bank ? '·' : ''} ${({ courant: 'courant', epargne: 'épargne', especes: 'espèces' })[a.type]}${a.card === 'differee' ? ' · carte différée' : ''}</span></span><span class="amt">${a.opening == null ? '' : money(a.opening)}</span></div>`).join('');
     return `<div class="welcome"><header class="top"><div class="steps" aria-label="Étape 2 sur 2"><span class="on"></span><span class="on"></span></div><h1 style="font-size:26px;margin-top:8px">Quels sont vos comptes ?</h1><p style="margin:0;color:#dbeeed;font-size:14px">Ajoutez-les comme vous les voyez chez votre banque. Vous pourrez les modifier à tout moment.</p></header><main>${list}<section class="card" style="border:1.5px solid var(--teal)">${accountFields({}, true)}<button class="btn soft full" data-act="onb-add" style="margin-top:12px">Ajouter ce compte</button></section></main><div style="padding:14px 16px calc(20px + env(safe-area-inset-bottom));display:flex;gap:10px;max-width:760px;margin:0 auto;width:100%"><button class="btn full" data-act="onb-done" ${state.accounts.length ? '' : 'disabled style="opacity:.5"'}>Continuer${state.accounts.length ? ' · ' + state.accounts.length + ' compte' + (state.accounts.length > 1 ? 's' : '') : ''}</button></div></div>`;
   }
-  return `<div class="welcome"><header class="top"><h1 style="font-size:28px">Mon Budget</h1><p style="margin:0;color:#dbeeed;font-size:15px;line-height:1.5">Votre budget sur téléphone et ordinateur : comptes, échéances, carte différée, et classement automatique de vos dépenses.</p></header><main>
+  return `<div class="welcome"><header class="top"><h1 style="font-size:28px">${esc(ED.name)}</h1><p style="margin:0;color:#dbeeed;font-size:15px;line-height:1.5">Votre budget sur téléphone et ordinateur : comptes, échéances, carte différée, et classement automatique de vos dépenses.</p></header><main>
   ${v1 ? `<button class="card row-item" data-act="copy-v1" style="border:2px solid var(--teal)"><span class="ico">${ic('transfer', 20)}</span><span class="grow"><span class="t" style="display:block">Copier mes données actuelles</span><span class="s" style="display:block;white-space:normal">${v1.transactions.length} opérations trouvées sur cet appareil. Recommandé pour comparer avec vos vrais chiffres.</span></span>${ic('r', 18)}</button>` : ''}
-  <button class="card row-item" data-act="drive-start"><span class="ico g">${ic('cloud', 20)}</span><span class="grow"><span class="t" style="display:block">Récupérer depuis Google Drive</span><span class="s" style="display:block;white-space:normal">Vos données v2${v1 ? '' : ', ou à défaut celles de la version actuelle'}, sauvegardées dans votre Drive.</span></span>${ic('r', 18)}</button>
+  <button class="card row-item" data-act="drive-start"><span class="ico g">${ic('cloud', 20)}</span><span class="grow"><span class="t" style="display:block">Récupérer depuis Google Drive</span><span class="s" style="display:block;white-space:normal">Vos données sauvegardées dans votre Google Drive.</span></span>${ic('r', 18)}</button>
   <button class="card row-item" data-act="onb-start"><span class="ico w">${ic('plus', 20)}</span><span class="grow"><span class="t" style="display:block">Commencer avec un budget vide</span><span class="s" style="display:block;white-space:normal">Deux questions rapides : votre situation, puis vos comptes.</span></span>${ic('r', 18)}</button>
-  ${state._loadError ? `<p class="alert c">Les données v2 de cet appareil n’ont pas pu être lues (${esc(state._loadError)}).</p>` : ''}</main></div>`;
+  ${state._loadError ? `<p class="alert c">Les données de cet appareil n’ont pas pu être lues (${esc(state._loadError)}).</p>` : ''}</main></div>`;
 }
 
 /* ---------- Calendrier (dates, mois, jours du mois) ---------- */
@@ -549,7 +549,7 @@ $('#sheet').addEventListener('click', e => { if (e.target !== $('#sheet')) retur
 $('#sheet').addEventListener('cancel', e => { if (sheetDirty()) { e.preventDefault(); toast('Saisie en cours : touchez ✕ pour fermer'); } });
 $('#sheet').addEventListener('input', e => { if (e.target.closest('#sf')) sf().dataset.dirty = '1'; });
 /* Brouillon de saisie (gardé si la fenêtre se ferme sans enregistrer) */
-const DRAFT_KEY = 'mon-budget-v2-draft';
+const DRAFT_KEY = ED.key + '-draft';
 let txDraft = null;
 try { txDraft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch { txDraft = null; }
 const setDraft = d => { txDraft = d; try { d ? localStorage.setItem(DRAFT_KEY, JSON.stringify(d)) : localStorage.removeItem(DRAFT_KEY); } catch { } };
@@ -1120,7 +1120,7 @@ function act(name, b) {
     case 'trial-reload': { const raw = localStorage.getItem(V2KEY); if (!raw) { alert('Aucune donnée v2 sur cet appareil.'); break; }
       if (!confirm('Remplacer les données de cette version d’essai par une nouvelle copie de vos données v2 ?\nLa v2 n’est pas modifiée.')) break;
       state = validate(JSON.parse(raw)); save({ noHistory: true }); render(); toast('Données recopiées depuis la v2'); break; }
-    case 'group': ui.group = b.dataset.g; try { localStorage.setItem('mb2-ui-group', ui.group); } catch {} render(); break;
+    case 'group': ui.group = b.dataset.g; try { localStorage.setItem(ED.key + '-ui-group', ui.group); } catch {} render(); break;
     case 'bilan-group': ui.bilanGroup = b.dataset.g; render(); break;
     case 'ops-filter': ui.ops = b.dataset.f; render(); break;
     case 'clear-q': ui.q = ''; render(); break;
@@ -1143,12 +1143,12 @@ function act(name, b) {
     case 'due-ok': { const d = dueList(ui.month, ui.acc).find(x => x.key === b.dataset.key); if (!d) break; confirmDue(d, d.amount, d.date <= today() ? d.date : today()); save(); render(); toast('✓ ' + d.label + ' enregistré'); break; }
     case 'sched-list': schedulesList(); break;
     case 'budget': budgetSheet(b.dataset.cat); break;
-    case 'export-csv': download('mon-budget-v2-operations-' + today() + '.csv', exportCSV(), 'text/csv;charset=utf-8'); break;
-    case 'export-json': download('mon-budget-v2-sauvegarde-' + today() + '.json', JSON.stringify(state, null, 1), 'application/json'); break;
+    case 'export-csv': download(ED.key + '-operations-' + today() + '.csv', exportCSV(), 'text/csv;charset=utf-8'); break;
+    case 'export-json': download(ED.key + '-sauvegarde-' + today() + '.json', JSON.stringify(state, null, 1), 'application/json'); break;
     case 'undo-import': { const bt = state.imports.find(x => x.id === b.dataset.id); if (bt && confirm('Annuler l’import « ' + bt.name + ' » ? Ses ' + (bt.ids.length + (bt.restore?.length || 0)) + ' opérations seront retirées ou remises en « prévue ».')) { const n = undoImport(bt.id); save(); render(); toast(n + ' opérations retirées'); } break; }
     case 'copy-v1': {
       const v1 = readV1Local(); if (!v1) break;
-      if (!isEmptyState(state) && !confirm('Remplacer les données v2 de cet appareil par une copie de la version actuelle ?')) break;
+      if (!isEmptyState(state) && !confirm('Remplacer les données de cet appareil par une copie de l’ancienne version (v1) ?')) break;
       try { const before = state; state = convertV1(v1); ui.onboard = null; save(); render(); toast('Données copiées : ' + state.transactions.length + ' opérations, ' + state.accounts.length + ' comptes'); if (before.accounts?.length) {} } catch (e) { alert(e.message); }
       break;
     }

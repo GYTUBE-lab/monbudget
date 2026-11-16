@@ -1,7 +1,9 @@
-/* Mon Budget v2 — données et calculs
+/* Mon Budget — données et calculs (même code pour chaque édition : Budget_GFib, Budget_BHoff…)
    Montants en centimes (entiers). Données séparées de la version actuelle. */
 'use strict';
-const KEY = 'mon-budget-v2', V1KEY = 'mon-budget-v1', V2KEY = KEY;
+/* Édition : nom, stockage et fichier Drive propres (défini dans edition.js) */
+const ED = Object.assign({ name: 'Mon Budget', key: 'mon-budget-v2', drive: 'data-v2', file: 'Mon Budget v2 - données.json', token: 'mon-budget-gtoken', v1: true }, window.EDITION || {});
+const KEY = ED.key, V1KEY = 'mon-budget-v1', V2KEY = KEY;
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -155,7 +157,7 @@ function repairTransfers(s) {
   if (n) s._repaired = n;
 }
 function validate(s) {
-  if (!s || typeof s !== 'object' || s.v !== 2) throw Error('Ce fichier n’est pas une sauvegarde de Mon Budget v2.');
+  if (!s || typeof s !== 'object' || s.v !== 2) throw Error('Ce fichier n’est pas une sauvegarde de ' + ED.name + '.');
   for (const k of ['accounts', 'transactions', 'schedules', 'categories', 'imports']) { s[k] ||= []; if (!Array.isArray(s[k])) throw Error('Sauvegarde invalide (' + k + ').'); }
   if (!Array.isArray(s.groups) || !s.groups.length) s.groups = DEFAULT_GROUPS();
   repairTransfers(s);
@@ -571,7 +573,8 @@ function convertV1(s1) {
   s.convertedFromV1 = new Date().toISOString();
   return validate(s);
 }
-function readV1Local() { try { const raw = localStorage.getItem(V1KEY); if (!raw) return null; const s = JSON.parse(raw); return s?.transactions ? s : null; } catch { return null; } }
+function readV1Local() {
+  if (!ED.v1) return null; try { const raw = localStorage.getItem(V1KEY); if (!raw) return null; const s = JSON.parse(raw); return s?.transactions ? s : null; } catch { return null; } }
 
 /* ---------- Import CSV du relevé bancaire ---------- */
 function parseCSV(text) {

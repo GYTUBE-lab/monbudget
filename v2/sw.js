@@ -1,6 +1,6 @@
 // Mon Budget v2 — fonctionnement hors connexion (limité au dossier /v2/)
-const CACHE = 'mon-budget-v2-22';
-const FILES = ['./', './index.html', './app.js', './views.js', './sync.js', './manifest.webmanifest', '../config.js',
+const CACHE = 'mon-budget-v2-23';
+const FILES = ['./', './index.html', './edition.js', './app.js', './views.js', './sync.js', './manifest.webmanifest', '../config.js',
   '../icons/icon-192.png', '../icons/icon-512.png', '../icons/maskable-512.png', '../icons/apple-touch-icon.png', '../icons/favicon-32.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
