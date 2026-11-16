@@ -77,7 +77,7 @@ const presetCategories = () => [...PRESET.map(([name, group, kind, subs]) => ({ 
 const PROFILE_OPTS = {
   income: [['salaire', 'Salaire'], ['retraite', 'Retraite / pension'], ['rsa', 'RSA / prime d’activité'], ['chomage', 'Chômage (France Travail)'], ['caf', 'Allocations CAF'], ['alim', 'Pension alimentaire'], ['indep', 'Indépendant / auto-entrepreneur']],
   activity: [['saison', 'Location saisonnière (bungalow, gîte…)'], ['longue', 'Location à l’année'], ['ventes', 'Ventes (occasion, plantes, artisanat…)']],
-  home: [['enfants', 'Enfants'], ['animaux', 'Animaux'], ['voiture', 'Voiture']]
+  home: [['enfants', 'Enfants'], ['animaux', 'Animaux'], ['voiture', 'Voiture'], ['moto', 'Moto / scooter']]
 };
 const presetRows = test => PRESET.filter(([n, g]) => test(n, g));
 const PACKS = {
@@ -93,7 +93,8 @@ const PACKS = {
   ventes: presetRows((n, g) => g === 'ventes'),
   enfants: [['Enfants', 'perso', 'out', ['Cantine', 'Garde / crèche', 'École / fournitures', 'Activités', 'Vêtements enfants']]],
   animaux: presetRows(n => n === 'Animaux'),
-  voiture: presetRows(n => n === 'Voiture & transport')
+  voiture: presetRows(n => n === 'Voiture & transport'),
+  moto: [['Moto', 'perso', 'out', ['Carburant', 'Assurance', 'Entretien / réparations', 'Équipement (casque, blouson…)', 'Carte grise / contrôle', 'Parking / péage', 'Crédit / location']]]
 };
 const PACK_GROUPS = { saison: { id: 'bungalow', name: 'Location saisonnière', tab: true }, longue: { id: 'location', name: 'Location à l’année', tab: true }, ventes: { id: 'ventes', name: 'Ventes diverses', tab: false } };
 const IN_PACKS = new Set(Object.values(PACKS).flat().map(r => r[0]));
