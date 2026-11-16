@@ -624,7 +624,10 @@ function txForm(type, opts = {}) {
     const a = accountById(val('account') || acc);
     if (type === 'expense' && $('#payBox').children.length !== payOptsFor(a?.id).length) $('#payBox').outerHTML = payButtons(a?.id, getPressed('pay'));
     const p = getPressed('pay');
-    $('#payInfo').innerHTML = type === 'expense' && p === 'card' && isDeferredAcc(a) ? `<div class="alert">${ic('card', 20)}<span>Carte différée de <b>${esc(a.name)}</b> : débitée le <b>${dateFR(dueDateFor(a, val('date') || date)).slice(0, 5)}</b> avec les autres achats du mois. Déjà débité ? Choisissez « Carte immédiate ».</span></div>` : type === 'expense' && p === 'cardNow' ? `<div class="alert">${ic('card', 20)}<span>Débité le jour même (${dateFR(val('date') || date).slice(0, 5)}) sur <b>${esc(a?.name || '')}</b>. À utiliser aussi pour un débit global de carte déjà passé dont les achats ne sont pas saisis.</span></div>` : '';
+    if (p === 'cash' && a && a.type !== 'especes') { // les espèces ne passent pas par la banque
+      const ca = activeAccounts().find(x => x.type === 'especes');
+      $('#payInfo').innerHTML = `<div class="alert w" style="flex-wrap:wrap"><span style="flex:1;min-width:200px">Des espèces ne ${type === 'income' ? 'vont' : 'sortent'} pas ${type === 'income' ? 'sur' : 'de'} <b>${esc(a.name)}</b>. ${ca ? 'Choisissez le compte <b>' + esc(ca.name) + '</b> (porte-monnaie)' : 'Créez un compte « Espèces » (porte-monnaie)'}, ou <b>${type === 'income' ? 'Virement' : 'Prélèvement / virement'}</b> si l’argent est passé par la banque.</span><button type="button" class="btn small" data-act="use-cash">${ca ? 'Utiliser ' + esc(ca.name) : 'Créer « Espèces »'}</button></div>`;
+    } else $('#payInfo').innerHTML = type === 'expense' && p === 'card' && isDeferredAcc(a) ? `<div class="alert">${ic('card', 20)}<span>Carte différée de <b>${esc(a.name)}</b> : débitée le <b>${dateFR(dueDateFor(a, val('date') || date)).slice(0, 5)}</b> avec les autres achats du mois. Déjà débité ? Choisissez « Carte immédiate ».</span></div>` : type === 'expense' && p === 'cardNow' ? `<div class="alert">${ic('card', 20)}<span>Débité le jour même (${dateFR(val('date') || date).slice(0, 5)}) sur <b>${esc(a?.name || '')}</b>. À utiliser aussi pour un débit global de carte déjà passé dont les achats ne sont pas saisis.</span></div>` : '';
     sf().querySelectorAll('[data-act=qdate]').forEach(b => { const x = new Date(); x.setDate(x.getDate() - Number(b.dataset.d)); const d = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); b.setAttribute('aria-pressed', String(val('date') === d)); });
   };
   const drawSplits = () => {
@@ -791,7 +794,10 @@ function txForm(type, opts = {}) {
       if (el.name === 'buys') { if (el.checked) { sf().elements.split.checked = false; drawSplits(); 
         if (isDeferredAcc(accountById(val('account'))) && getPressed('pay') !== 'card') { sf().querySelectorAll('[data-group="pay"]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === 'card'))); drawPay(); } } drawBuys(); } }
   };
-  sheet.afterPress = g => { if (g === 'pay') drawPay(); };
+  sheet.afterPress = g => { if (g === 'pay') { const ca = activeAccounts().find(x => x.type === 'especes'), e = sf().elements; if (getPressed('pay') === 'cash' && ca && accountById(e.account.value)?.type !== 'especes') { e.account.value = ca.id; toast('Compte « ' + ca.name + ' » choisi'); } drawPay(); } };
+  acts['use-cash'] = () => { let ca = activeAccounts().find(x => x.type === 'especes');
+    if (!ca) { ca = makeAccount({ name: 'Espèces', type: 'especes', card: 'aucune', opening: '0', start: (val('date') || today()).slice(0, 8) + '01' }); state.accounts.push(ca); save(); toast('Compte « Espèces » créé (porte-monnaie)'); }
+    const e = sf().elements; e.account.innerHTML = accOptions(ca.id); e.account.value = ca.id; drawPay(); };
   const orig = acts['pick-cat']; acts['pick-cat'] = b => { F.touchedCat = true; orig(b); };
   const origSave = acts.save; acts.save = () => { const e = sf().elements, mk = e.mkrule?.checked, lbl = e.label.value, c = e.category.value, sc = e.subcategory.value, n0 = saveCount;
     const rp = ruleProposal(lbl, parseAmount(e.amount.value) || 0);
