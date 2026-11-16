@@ -1,8 +1,7 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mon Budget</title><link rel="icon" href="icons/favicon-32.png">
-<style>body{font-family:system-ui,sans-serif;background:#0f5c63;color:#fff;min-height:100vh;margin:0;display:grid;place-items:center;padding:16px;text-align:center}
-a{display:block;margin:12px auto;max-width:320px;padding:16px;border-radius:14px;background:#fff;color:#0f5c63;font-weight:800;text-decoration:none;font-size:18px}</style></head>
-<body><main><h1>Mon Budget</h1><p>Choisissez votre édition :</p><a href="./Budget_GFib/">Budget_GFib</a><a href="./Budget_BHoff/">Budget_BHoff</a></main>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => { const p = new URL(r.scope).pathname; if (!/\/(v2|v3|Budget_[A-Za-z]+)\/$/.test(p)) r.unregister(); })).catch(() => {});</script>
+<title>Mon Budget</title><link rel="icon" href="icons/favicon-32.png"><meta name="robots" content="noindex">
+<style>body{font-family:system-ui,sans-serif;background:#0f5c63;color:#fff;min-height:100vh;margin:0;display:grid;place-items:center;padding:16px;text-align:center;line-height:1.5}</style></head>
+<body><main><h1>Mon Budget</h1><p>Ouvrez le lien personnel qui vous a été envoyé.</p></main>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => { const p = new URL(r.scope).pathname; if (!/\/(v2|v3|budget-\d+)\/$/.test(p)) r.unregister(); })).catch(() => {});</script>
 </body></html>

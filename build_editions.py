@@ -6,8 +6,8 @@ SRC = ROOT / 'src'
 EDITIONS = {
   # dossier : (réglages de l'édition, préfixe du cache hors connexion)
   'v2':           (dict(name='Budget_GFib',  key='mon-budget-v2', drive='data-v2',    file='Mon Budget v2 - données.json', token='mon-budget-gtoken',   v1=True),  'mon-budget-v2-'),
-  'Budget_GFib':  (dict(name='Budget_GFib',  key='mon-budget-v2', drive='data-v2',    file='Mon Budget v2 - données.json', token='mon-budget-gtoken',   v1=True),  'budget-gfib-'),
-  'Budget_BHoff': (dict(name='Budget_BHoff', key='budget-bhoff',  drive='data-bhoff', file='Budget_BHoff - données.json',  token='budget-bhoff-gtoken', v1=False), 'budget-bhoff-'),
+  'budget-1':     (dict(name='Budget_GFib',  key='mon-budget-v2', drive='data-v2',    file='Mon Budget v2 - données.json', token='mon-budget-gtoken',   v1=True),  'budget-1-'),
+  'budget-2':     (dict(name='Budget_BHoff', key='budget-bhoff',  drive='data-bhoff', file='Budget_BHoff - données.json',  token='budget-bhoff-gtoken', v1=False), 'budget-2-'),
 }
 VERSION = (ROOT / 'VERSION').read_text().strip()
 for folder, (ed, prefix) in EDITIONS.items():

@@ -2,10 +2,8 @@
 
 Application de budget personnel installable (Android, iPhone, Windows), qui fonctionne hors connexion.
 
-Éditions (même code, données séparées) :
-- `Budget_GFib/` — https://gytube-lab.github.io/monbudget/Budget_GFib/
-- `Budget_BHoff/` — https://gytube-lab.github.io/monbudget/Budget_BHoff/ (démarre vierge)
-- `v2/` — ancienne adresse, identique à Budget_GFib (mêmes données).
+Chaque édition a son propre dossier (`budget-1/`, `budget-2/`…) : même code, données séparées.
+`v2/` est l'ancienne adresse de la première édition.
 
 Le code commun est dans `src/`. `python3 build_editions.py` fabrique les dossiers des éditions
 (réglages dans `edition.js` : nom, stockage local, fichier Google Drive).
