@@ -77,7 +77,7 @@ const presetCategories = () => [...PRESET.map(([name, group, kind, subs]) => ({ 
 const PROFILE_OPTS = {
   income: [['salaire', 'Salaire'], ['retraite', 'Retraite / pension'], ['rsa', 'RSA / prime d’activité'], ['chomage', 'Chômage (France Travail)'], ['caf', 'Allocations CAF'], ['alim', 'Pension alimentaire'], ['indep', 'Indépendant / auto-entrepreneur']],
   activity: [['saison', 'Location saisonnière (bungalow, gîte…)'], ['longue', 'Location à l’année'], ['ventes', 'Ventes (occasion, plantes, artisanat…)']],
-  home: [['enfants', 'Enfants'], ['animaux', 'Animaux'], ['voiture', 'Voiture'], ['moto', 'Moto / scooter']]
+  home: [['animaux', 'Animaux'], ['voiture', 'Voiture'], ['moto', 'Moto / scooter']]
 };
 const presetRows = test => PRESET.filter(([n, g]) => test(n, g));
 const PACKS = {
