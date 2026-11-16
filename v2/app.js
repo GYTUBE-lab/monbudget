@@ -75,7 +75,7 @@ const CHANNELS = ['Location en direct', 'Airbnb', 'Booking'];
 const presetCategories = () => [...PRESET.map(([name, group, kind, subs]) => ({ name, group, kind, subs: [...subs], hidden: false })), { name: SYSTEM.transfer, group: 'perso', kind: 'out', subs: [], hidden: true }, { name: SYSTEM.settlement, group: 'perso', kind: 'out', subs: [], hidden: true }];
 /* ---------- Profil : catégories adaptées à chaque utilisateur ---------- */
 const PROFILE_OPTS = {
-  income: [['salaire', 'Salaire'], ['retraite', 'Retraite / pension'], ['rsa', 'RSA / prime d’activité'], ['chomage', 'Chômage (France Travail)'], ['caf', 'Allocations CAF'], ['alim', 'Pension alimentaire'], ['indep', 'Indépendant / auto-entrepreneur']],
+  income: [['salaire', 'Salaire'], ['retraite', 'Retraite / pension'], ['rsa', 'RSA / prime d’activité'], ['chomage', 'Chômage (France Travail)'], ['indep', 'Indépendant / auto-entrepreneur']],
   activity: [['saison', 'Location saisonnière (bungalow, gîte…)'], ['longue', 'Location à l’année'], ['ventes', 'Ventes (occasion, plantes, artisanat…)']],
   home: [['animaux', 'Animaux'], ['voiture', 'Voiture'], ['moto', 'Moto / scooter']]
 };
