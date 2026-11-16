@@ -71,6 +71,52 @@ const PRESET = [
 ];
 const CHANNELS = ['Location en direct', 'Airbnb', 'Booking'];
 const presetCategories = () => [...PRESET.map(([name, group, kind, subs]) => ({ name, group, kind, subs: [...subs], hidden: false })), { name: SYSTEM.transfer, group: 'perso', kind: 'out', subs: [], hidden: true }, { name: SYSTEM.settlement, group: 'perso', kind: 'out', subs: [], hidden: true }];
+/* ---------- Profil : catégories adaptées à chaque utilisateur ---------- */
+const PROFILE_OPTS = {
+  income: [['salaire', 'Salaire'], ['retraite', 'Retraite / pension'], ['rsa', 'RSA / prime d’activité'], ['chomage', 'Chômage (France Travail)'], ['caf', 'Allocations CAF'], ['alim', 'Pension alimentaire'], ['indep', 'Indépendant / auto-entrepreneur']],
+  activity: [['saison', 'Location saisonnière (bungalow, gîte…)'], ['longue', 'Location à l’année'], ['ventes', 'Ventes (occasion, plantes, artisanat…)']],
+  home: [['enfants', 'Enfants'], ['animaux', 'Animaux'], ['voiture', 'Voiture']]
+};
+const presetRows = test => PRESET.filter(([n, g]) => test(n, g));
+const PACKS = {
+  salaire: [['Salaire', 'perso', 'in', ['Salaire net', 'Primes', 'Heures supplémentaires']], ['Frais professionnels', 'perso', 'out', ['Repas', 'Déplacements', 'Tenue / matériel']]],
+  retraite: [['Pension', 'perso', 'in', ['Retraite de base', 'Retraite complémentaire', 'Pension de réversion']]],
+  rsa: [['RSA et prime d’activité', 'perso', 'in', ['RSA', 'Prime d’activité']]],
+  chomage: [['Allocation chômage', 'perso', 'in', ['ARE (France Travail)', 'Aide à la formation']]],
+  caf: [['Allocations CAF', 'perso', 'in', ['Allocations familiales', 'Aide au logement (APL)', 'AAH', 'Autres aides']]],
+  alim: [['Pension alimentaire', 'perso', 'in', []]],
+  indep: [['Revenus d’indépendant', 'perso', 'in', ['Factures clients', 'Ventes']], ['Charges professionnelles', 'perso', 'out', ['URSSAF / cotisations', 'Matériel', 'Déplacements', 'Comptable / banque pro']]],
+  saison: presetRows((n, g) => g === 'bungalow'),
+  longue: [['Location · Loyers perçus', 'location', 'in', ['Loyers', 'Charges récupérées']], ['Location · Charges', 'location', 'out', ['Taxe foncière', 'Travaux', 'Assurance propriétaire', 'Gestion / agence', 'Copropriété']]],
+  ventes: presetRows((n, g) => g === 'ventes'),
+  enfants: [['Enfants', 'perso', 'out', ['Cantine', 'Garde / crèche', 'École / fournitures', 'Activités', 'Vêtements enfants']]],
+  animaux: presetRows(n => n === 'Animaux'),
+  voiture: presetRows(n => n === 'Voiture & transport')
+};
+const PACK_GROUPS = { saison: { id: 'bungalow', name: 'Location saisonnière', tab: true }, longue: { id: 'location', name: 'Location à l’année', tab: true }, ventes: { id: 'ventes', name: 'Ventes diverses', tab: false } };
+const IN_PACKS = new Set(Object.values(PACKS).flat().map(r => r[0]));
+/* mode 'replace' (nouveau budget) : seulement les catégories utiles ; mode 'add' : ajoute ce qui manque, n'enlève rien */
+function applyProfile(keys, mode) {
+  const rows = [];
+  const base = PRESET.filter(([n]) => !IN_PACKS.has(n) && n !== 'Salaire' && n !== 'Pension');
+  if (mode === 'replace') rows.push(...base.filter(r => r[0] !== 'Autres'));
+  for (const k of keys) rows.push(...(PACKS[k] || []));
+  if (mode === 'replace' && !keys.includes('voiture')) rows.push(['Transport', 'perso', 'out', ['Transports en commun', 'Taxi / VTC', 'Vélo / trottinette', 'Train / avion']]);
+  if (mode === 'replace') rows.push(['Autres', 'perso', 'out', []]);
+  const mk = ([name, group, kind, subs]) => ({ name, group, kind, subs: [...subs], hidden: false });
+  let added = 0;
+  if (mode === 'replace') {
+    const sys = presetCategories().filter(c => Object.values(SYSTEM).includes(c.name));
+    state.categories = [{ name: TODO_CAT, group: 'perso', kind: 'out', subs: [], hidden: false }, ...rows.map(mk), { name: OFF_CAT, group: 'perso', kind: 'both', subs: ['Avance / prêt à un proche', 'Remboursement d’un proche', 'Achat pour quelqu’un', 'Correction'], hidden: false }, ...sys];
+    state.groups = [{ id: 'perso', name: 'Vie courante', tab: false }, ...keys.filter(k => PACK_GROUPS[k]).map(k => ({ ...PACK_GROUPS[k] }))];
+    added = rows.length;
+  } else {
+    for (const r of rows) { const c = catByName(r[0]); if (!c) { state.categories.splice(Math.max(0, state.categories.findIndex(x => x.name === 'Autres')), 0, mk(r)); added++; } else if (c.hidden) { c.hidden = false; added++; } }
+    for (const k of keys) if (PACK_GROUPS[k] && !groupById(PACK_GROUPS[k].id)) state.groups.push({ ...PACK_GROUPS[k] });
+  }
+  state.profile = [...new Set([...(mode === 'add' ? state.profile || [] : []), ...keys])];
+  return added;
+}
 /* Groupes de catégories : « Vie courante » (fixe) + groupes libres. tab = suivi à part (onglet sur l'accueil, hors « Personnel ») */
 const DEFAULT_GROUPS = () => [{ id: 'perso', name: 'Vie courante', tab: false }, { id: 'bungalow', name: 'Bungalow', tab: true }, { id: 'ventes', name: 'Ventes diverses', tab: false }];
 const groupsList = () => state.groups || DEFAULT_GROUPS();
