@@ -1,7 +1,9 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mon Budget</title><link rel="icon" href="icons/favicon-32.png"><meta name="robots" content="noindex">
-<style>body{font-family:system-ui,sans-serif;background:#0f5c63;color:#fff;min-height:100vh;margin:0;display:grid;place-items:center;padding:16px;text-align:center;line-height:1.5}</style></head>
-<body><main><h1>Mon Budget</h1><p>Ouvrez le lien personnel qui vous a été envoyé.</p></main>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => { const p = new URL(r.scope).pathname; if (!/\/(v2|v3|budget-\d+)\/$/.test(p)) r.unregister(); })).catch(() => {});</script>
-</body></html>
+<title>Mon Budget</title><meta http-equiv="refresh" content="0; url=./v2/"><link rel="icon" href="icons/favicon-32.png">
+<style>body{font-family:system-ui,sans-serif;background:#0f5c63;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:16px}a{color:#fff;font-weight:700}</style></head>
+<body><p><a href="./v2/">Ouvrir Mon Budget</a></p>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => { if (!new URL(r.scope).pathname.endsWith('/v2/')) r.unregister(); })).catch(() => {});
+location.replace('./v2/' + location.search + location.hash);
+</script></body></html>

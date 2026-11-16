@@ -1,6 +1,6 @@
 {
-  "name": "Budget_GFib",
-  "short_name": "Budget_GFib",
+  "name": "Mon Budget v2",
+  "short_name": "Budget v2",
   "description": "Budget personnel : comptes, échéances, carte différée, classement automatique. Données sur votre appareil et dans votre Google Drive.",
   "lang": "fr",
   "id": "./",
