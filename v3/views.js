@@ -43,6 +43,7 @@ const CI = {
   tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
   piggy: '<path d="M4.5 11.5A6.5 5.5 0 0 1 16 7.5l3-1-.6 3.2A5.5 5.5 0 0 1 20 12.5V15h-2l-1.2 3H14v-2H9.5v2h-3l-1-3A3.6 3.6 0 0 1 3 12z"/><path d="M15 11h.01"/>',
   pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>',
+  off: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
   dots: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   transfer: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
   card: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
@@ -60,7 +61,7 @@ const CAT_RULES = [
   [/animau|veterin/, 'paw', '#A0673A'], [/cadeau|don\b|dons/, 'gift', '#D95B73'], [/credit|pret|emprunt/, 'coins', '#7A5AC8'], [/impot|taxe/, 'scale', '#138A8A'],
   [/frais bancaire|banque|cotisation/, 'bank', '#3B4BA8'], [/pension|salaire|retraite/, 'wallet', '#3E9D4F'], [/revenu|rembours|aide/, 'arrowin', '#3E9D4F'],
   [/epargne|livret/, 'piggy', '#3E9D4F'], [/enfant|bebe|creche/, 'baby', '#E8912D'], [/ecole|etude|livre|culture/, 'book', '#5B5BD6'], [/plante|jardin/, 'leaf', '#3E9D4F'],
-  [/virement/, 'transfer', '#7A8691'], [/carte differee/, 'card', '#7A8691'], [/autre/, 'dots', '#7A8691']
+  [/hors budget/, 'off', '#C0392B'], [/virement/, 'transfer', '#7A8691'], [/carte differee/, 'card', '#7A8691'], [/autre/, 'dots', '#7A8691']
 ];
 function catLook(name) {
   const c = catByName(name) || {}, n = norm(name || '');
@@ -76,7 +77,7 @@ const todoTx = () => state.transactions.filter(t => !isPlanned(t) && t.treatment
 function catPicker(o) {
   const d = $('#catpick'), want = o.type === 'income' ? 'in' : 'out';
   let q = '', open = o.cat && catByName(o.cat)?.subs?.length ? o.cat : '', both = false;
-  const cats = () => state.categories.filter(c => !c.hidden && c.name !== TODO_CAT && !Object.values(SYSTEM).includes(c.name) && (both || c.kind === want || c.kind === 'both'));
+  const cats = () => state.categories.filter(c => !c.hidden && c.name !== TODO_CAT && c.name !== OFF_CAT && !Object.values(SYSTEM).includes(c.name) && (both || c.kind === want || c.kind === 'both'));
   const row = (c, s, label, sub) => `<button type="button" class="cp-row" data-cp="pick" data-c="${esc(c)}" data-s="${esc(s)}" aria-current="${o.cat === c && (o.sub || '') === s}">${label}</button>`;
   const catRow = c => {
     const l = catLook(c.name), subs = c.subs || [];
@@ -92,7 +93,16 @@ function catPicker(o) {
       for (const c of cats()) { if (norm(c.name).includes(nq)) hits.push([c.name, '']); for (const s of c.subs || []) if (norm(s).includes(nq)) hits.push([c.name, s]); }
       h = hits.slice(0, 80).map(([c, s]) => row(c, s, `${cico(c)}<span class="grow">${esc(s || c)}${s ? `<span class="s">${esc(c)}</span>` : ''}</span>`)).join('') || '<p class="empty">Aucune catégorie trouvée.</p>';
     } else {
+      const rec = []; const seen = new Set();
+      for (const t of [...state.transactions].sort((a, b) => b.date.localeCompare(a.date))) {
+        if (rec.length >= 5) break;
+        if (t.type !== o.type && !(o.type === 'expense' && t.type === 'expense') || t.treatment || [TODO_CAT, 'Autres'].includes(t.category) || !catByName(t.category) || catByName(t.category).hidden) continue;
+        const k = t.category + '|' + (t.subcategory || ''); if (!seen.has(k)) { seen.add(k); rec.push([t.category, t.subcategory || '']); }
+      }
+      if (rec.length) h += `<div class="cp-sec" style="padding-top:4px">Récentes</div>` + rec.map(([c, s]) => row(c, s, `${cico(c)}<span class="grow">${esc(s || c)}${s ? `<span class="s">${esc(c)}</span>` : ''}</span>${o.cat === c && (o.sub || '') === s ? I(IC.check, 18, 2.4) : ''}`)).join('');
+      h += `<div class="cp-sec">Spéciales</div>`;
       if (o.todo !== false) h += row(TODO_CAT, '', `${cico(TODO_CAT)}<span class="grow">${TODO_CAT}<span class="s">À classer plus tard</span></span>`);
+      if (catByName(OFF_CAT)) h += catRow(catByName(OFF_CAT)).replace('</span>' + I(IC.r, 18, 2), '<span class="s">Compte sur le solde, pas dans le budget</span></span>' + I(IC.r, 18, 2));
       for (const g of groupsList()) { const cs = cats().filter(c => groupOf(c.name) === g.id); if (cs.length) h += `<div class="cp-sec">${esc(g.name)}</div>` + cs.map(catRow).join(''); }
       h += `<button type="button" class="cp-row" data-cp="both" style="color:var(--teal);font-weight:700;justify-content:center">${both ? 'Masquer' : 'Voir aussi'} les catégories de ${want === 'in' ? 'dépenses' : 'revenus'}</button>`;
     }
@@ -117,16 +127,66 @@ function catPicker(o) {
   d.querySelector('.cp-list').scrollTop = 0;
 }
 
+/* ---------- Règles de classement ---------- */
+function rulesSheet() {
+  const rules = [...(state.rules || [])].sort((a, b) => a.match.localeCompare(b.match));
+  const body = `<p class="small" style="margin:0">Une règle classe automatiquement une opération dont le libellé contient le mot-clé, à l’import du relevé et à la saisie.</p>`
+    + (rules.length ? `<div class="card list" style="padding:0 14px">${rules.map(r => `<button type="button" class="row-item" data-act="rule-edit" data-id="${esc(r.id)}">${cico(r.category)}<span class="grow"><span class="t" style="display:block">« ${esc(r.match)} »</span><span class="s" style="display:block">→ ${esc(r.category)}${r.subcategory ? ' › ' + esc(r.subcategory) : ''}${r.type ? ' · ' + (r.type === 'income' ? 'revenus' : 'dépenses') : ''}</span></span>${ic('r', 18)}</button>`).join('')}</div>` : '<p class="empty">Aucune règle pour l’instant. Elles se créent en classant vos opérations (case « Toujours classer… »), ou ici.</p>')
+    + (todoTx().length ? `<button type="button" class="btn ghost full" data-act="rule-apply">Appliquer les règles aux ${todoTx().length} opération(s) à catégoriser</button>` : '');
+  openSheet('Règles de classement', body, `<button class="btn full" data-act="rule-new">${ic('plus', 18)} Nouvelle règle</button>`, {
+    'rule-edit': b => ruleForm(state.rules.find(r => r.id === b.dataset.id)),
+    'rule-new': () => ruleForm(null),
+    'rule-apply': () => { let n = 0; for (const t of todoTx()) { const r = ruleFor(t.label, t.type); if (r && !t.splits?.length) { t.category = r.category; t.subcategory = r.subcategory || ''; n++; } } save(); render(); rulesSheet(); toast(n ? n + ' opération(s) classée(s)' : 'Aucune ne correspond à une règle'); }
+  });
+}
+function ruleForm(r) {
+  const R = r ? { ...r } : { match: '', category: '', subcategory: '', type: 'expense' };
+  const drawCat = () => { $('#ruleCat').innerHTML = R.category ? `${cico(R.category)}<span class="grow"><span class="t">${esc(R.category)}</span><span class="s">${esc(R.subcategory || 'Toute la catégorie')}</span></span><span class="link">Changer</span>` : `${cico(TODO_CAT)}<span class="grow"><span class="t">Choisir la catégorie</span></span>`; };
+  const count = () => { const m = ruleText(val('match')); const n = m ? state.transactions.filter(t => !t.treatment && ruleMatches(m, t.label)).length : 0; $('#ruleCount').textContent = m ? n + ' opération(s) déjà enregistrée(s) contiennent ce mot-clé.' : ''; };
+  openSheet(r ? 'Modifier la règle' : 'Nouvelle règle', `<label class="f">Le libellé contient<input name="match" value="${esc(R.match)}" placeholder="Ex. PHARMACIE, LECLERC, EDF" autocomplete="off" style="text-transform:uppercase"></label><p class="tiny" id="ruleCount" style="margin:-6px 0 0"></p>
+    <fieldset><legend>Pour</legend><div class="seg light">${[['expense', 'Dépenses'], ['income', 'Revenus'], ['', 'Les deux']].map(([v, l]) => `<button type="button" data-group="rtype" data-v="${v}" aria-pressed="${(R.type || '') === v}">${l}</button>`).join('')}</div></fieldset>
+    <fieldset><legend>Classer en</legend><button type="button" class="cp-field" id="ruleCat" data-act="rule-cat"></button></fieldset>
+    ${r ? '<label class="toggle"><input type="checkbox" name="reapply"> Reclasser aussi les opérations déjà enregistrées qui contiennent ce mot-clé</label>' : '<label class="toggle"><input type="checkbox" name="reapply" checked> Classer aussi les opérations « À catégoriser » qui contiennent ce mot-clé</label>'}`,
+    (r ? `<button class="btn danger" data-act="del" aria-label="Supprimer la règle">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">Enregistrer</button>`, {
+    'rule-cat': () => catPicker({ type: getPressed('rtype') || 'expense', cat: R.category, sub: R.subcategory, todo: false, onPick: (c, s) => { R.category = c; R.subcategory = s; drawCat(); } }),
+    save: () => { const m = ruleText(val('match')); if (!m) return alert('Indiquez un mot-clé.'); if (!R.category) return alert('Choisissez la catégorie.');
+      const typ = getPressed('rtype') || '';
+      if (r) Object.assign(state.rules.find(x => x.id === r.id), { match: m.toUpperCase(), category: R.category, subcategory: R.subcategory || '', type: typ });
+      else addRule(m, R.category, R.subcategory, typ);
+      let n = 0;
+      if (sf().elements.reapply.checked) for (const t of state.transactions) { if (t.treatment || t.splits?.length || (typ && t.type !== typ)) continue; if (!r && t.category !== TODO_CAT) continue; if (ruleMatches(m, t.label)) { t.category = R.category; t.subcategory = R.subcategory || ''; n++; } }
+      save(); render(); rulesSheet(); toast('Règle enregistrée' + (n ? ' · ' + n + ' opération(s) reclassée(s)' : '')); },
+    del: () => { if (!confirm('Supprimer cette règle ? Les opérations déjà classées ne changent pas.')) return; state.rules = state.rules.filter(x => x.id !== r.id); save(); rulesSheet(); toast('Règle supprimée'); }
+  }, { back: 'rules-back' });
+  sheet.acts['rules-back'] = () => rulesSheet();
+  drawCat(); count(); sheet.inputs.match = count;
+}
+/* ---------- Regrouper en grandes catégories ---------- */
+function mergeSheet() {
+  const used = name => state.transactions.reduce((n, t) => n + parts(t).filter(p => p.category === name).length, 0);
+  const plan = MERGE_PLAN.map(([target, srcs]) => [target, srcs.filter(x => catByName(x) && x !== target)]).filter(([, s]) => s.length);
+  if (!plan.length) return openSheet('Regrouper', '<p class="empty">Vos catégories sont déjà regroupées.</p>', '<button class="btn full" data-act="close">OK</button>', {});
+  const body = `<p class="small" style="margin:0">Proposition : moins de catégories, plus faciles à parcourir. Les anciennes deviennent des <b>sous-catégories</b> : rien n’est perdu, vos opérations, échéances, règles et budgets suivent. Décochez ce que vous voulez garder tel quel.</p>`
+    + plan.map(([target, srcs], i) => `<label class="split-card" style="display:flex;flex-direction:row;gap:12px;align-items:center;cursor:pointer"><input type="checkbox" name="m${i}" checked style="margin-top:8px">${cico(target)}<span class="grow"><span class="b" style="display:block">${esc(target)}</span><span class="tiny">← ${srcs.map(x => esc(x) + ' (' + used(x) + ')').join(', ')}</span></span></label>`).join('')
+    + `<p class="tiny" style="margin:0">Vos autres catégories (dont les vôtres, ex. Impôts, Crédits, Bungalow…) ne changent pas. Le regroupement peut être annulé depuis la page Catégories.</p>`;
+  openSheet('Regrouper les catégories', body, `<button class="btn full" data-act="go">Regrouper</button>`, {
+    go: () => { const e = sf().elements, chosen = plan.filter((_, i) => e['m' + i].checked); if (!chosen.length) return closeSheet();
+      try { localStorage.setItem(KEY + '-before-merge', JSON.stringify(state)); } catch {}
+      let n = 0; for (const [t, s] of chosen) n += mergeCategories(t, s);
+      save(); closeSheet(); render(); toast(chosen.length + ' regroupement(s) · ' + n + ' élément(s) reclassé(s)'); }
+  });
+}
+
 /* Tri rapide des opérations « À catégoriser » (une par une, comme dans l'appli de la banque) */
 function triage(i = 0) {
   const list = todoTx(), d = $('#catpick');
   if (!list.length) { if (d.open) d.close(); render(); toast('Tout est classé ✓'); return; }
   if (i >= list.length) { if (d.open) d.close(); render(); toast(list.length + ' opération' + (list.length > 1 ? 's' : '') + ' encore à classer'); return; }
-  const t = list[i], key = labelKey(t.label), similar = key ? list.filter(x => x !== t && x.type === t.type && labelKey(x.label) === key) : [];
+  const t = list[i], rk = ruleKey(t.label), key = labelKey(t.label), similar = key ? list.filter(x => x !== t && x.type === t.type && labelKey(x.label) === key) : [];
   const head = `<div class="cp-op"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><div style="min-width:0"><div class="b" style="font-size:17px">${esc(t.label)}</div><div class="small">${dateFR(t.date)} · ${esc(accName(t.account))}</div></div><div class="big ${t.type === 'income' ? 'pos' : 'neg'}">${t.type === 'income' ? '+' : '−'}${money(t.amount)}</div></div><div class="tiny" style="margin-top:4px">${i + 1} sur ${list.length} à classer${t.note ? ' · ' + esc(t.note) : ''}</div></div>`;
-  const foot = `<div class="sheet-foot" style="flex-direction:column;gap:8px">${similar.length ? `<label class="toggle" style="margin:0"><input type="checkbox" id="cpSame" checked> Classer pareil les ${similar.length} autre${similar.length > 1 ? 's' : ''} « ${esc(key.toUpperCase())} »</label>` : ''}<div style="display:flex;gap:10px"><button type="button" class="btn ghost" style="flex:1" data-cp="skip">Passer</button><button type="button" class="btn ghost" style="flex:1" data-cp="stop">Terminer</button></div></div>`;
+  const foot = `<div class="sheet-foot" style="flex-direction:column;gap:8px">${rk ? `<label class="toggle" style="margin:0"><input type="checkbox" id="cpRule" checked> Toujours classer ainsi les « ${esc(rk)} » (règle)</label>` : ''}${similar.length ? `<label class="toggle" style="margin:0"><input type="checkbox" id="cpSame" checked> Classer pareil les ${similar.length} autre${similar.length > 1 ? 's' : ''} « ${esc(key.toUpperCase())} »</label>` : ''}<div style="display:flex;gap:10px"><button type="button" class="btn ghost" style="flex:1" data-cp="skip">Passer</button><button type="button" class="btn ghost" style="flex:1" data-cp="stop">Terminer</button></div></div>`;
   catPicker({ type: t.type, title: 'Classer l’opération', head, foot, todo: false,
-    onPick: (c, s) => { const same = $('#cpSame')?.checked; for (const x of [t, ...(same ? similar : [])]) { x.category = c; x.subcategory = s; if (x.splits) for (const l of x.splits) if (l.category === TODO_CAT) { l.category = c; l.subcategory = s; } } save(); render(); triage(i); return true; },
+    onPick: (c, s) => { const same = $('#cpSame')?.checked; if (rk && $('#cpRule')?.checked && c !== TODO_CAT) addRule(rk, c, s, t.type); for (const x of [t, ...(same ? similar : [])]) { x.category = c; x.subcategory = s; if (x.splits) for (const l of x.splits) if (l.category === TODO_CAT) { l.category = c; l.subcategory = s; } } save(); render(); triage(i); return true; },
     acts: { skip: () => triage(i + 1), stop: () => { d.close(); render(); } } });
 }
 /* Compte proposé dans les saisies : celui choisi en haut de l'écran, sinon le compte par défaut */
@@ -351,6 +411,8 @@ const PAGES = {
   cats() {
     const groups = Object.fromEntries(groupsList().map(g => [g.id, g.name]));
     let h = subTop('Catégories') + '<main>';
+    h += `<div class="grid2"><button class="btn ghost" data-act="rules">${I(CI.bolt, 18)} Règles (${(state.rules || []).length})</button><button class="btn ghost" data-act="merge">${I(CI.dots, 18)} Regrouper</button></div>`;
+    try { if (localStorage.getItem(KEY + '-before-merge')) h += `<button class="btn ghost full" data-act="merge-undo">Annuler le dernier regroupement</button>`; } catch {}
     h += `<p class="small" style="margin:0">Un <b>groupe</b> rassemble des catégories (ex. Vie courante, Bungalow, Ventes). Un groupe « suivi à part » a son propre onglet sur l’accueil et n’entre pas dans « Personnel ».</p><button class="btn ghost full" data-act="groups">Gérer les groupes (${groupsList().length})</button>`;
     for (const [g, l] of Object.entries(groups)) {
       const cs = state.categories.filter(c => (c.group === g || (g === 'perso' && !groups[c.group])) && !Object.values(SYSTEM).includes(c.name));
@@ -509,7 +571,7 @@ function txForm(type, opts = {}) {
   <label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant</span><input name="amount" class="amount-in ${type === 'income' ? 'inc' : ''}" inputmode="decimal" autocomplete="off" placeholder="0,00 €" value="${t ? amountInput(t.amount) : opts.amount ? amountInput(opts.amount) : ''}"></label>
   <label class="f">${type === 'income' ? 'De qui / quoi ?' : 'Où / quoi ?'}<input name="label" list="labelsList" autocomplete="off" value="${esc(t?.label || opts.label || '')}" placeholder="${type === 'income' ? 'Ex. Pension, remboursement…' : 'Ex. Intermarché, pharmacie…'}"><datalist id="labelsList">${recentLabels(type).map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
   <input type="hidden" name="category" value="${esc(cat)}"><input type="hidden" name="subcategory" value="${esc(t?.subcategory || opts.subcategory || '')}">
-  <fieldset><legend>Catégorie <span id="guessNote" class="tiny" style="font-weight:500;color:var(--pos)"></span></legend><div id="catBox"></div></fieldset>
+  <fieldset><legend>Catégorie <span id="guessNote" class="tiny" style="font-weight:500;color:var(--pos)"></span></legend><div id="catBox"></div><div id="ruleBox"></div></fieldset>
   <fieldset><legend>${type === 'income' ? 'Reçu par' : 'Payé avec'}</legend>${payButtons(acc, pay)}</fieldset>
   <div id="payInfo"></div>
   ${type === 'expense' ? `<label class="toggle" id="splitTog" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="split" ${t?.splits?.length || opts.split ? 'checked' : ''}> <span><b>Détailler le ticket</b> <span class="tiny">· un seul achat, plusieurs articles ou catégories (supermarché…)</span></span></label><div id="splitBox" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -524,7 +586,7 @@ function txForm(type, opts = {}) {
   </div></details>${isEdit && t.treatment !== 'transfer' && t.treatment !== 'settlement' && !t.recurringId && activeAccounts().length > 1 ? `<div class="kvbox" style="padding:12px 14px;margin-top:4px"><div class="b" style="margin-bottom:6px">⇄ C’est un virement entre mes comptes ?</div><div style="display:flex;gap:8px"><select name="xferAcc" class="in" style="flex:1" aria-label="L’autre compte">${activeAccounts().filter(a => a.id !== t.account).map(a => `<option value="${esc(a.id)}">${type === 'income' ? 'Depuis ' : 'Vers '}${esc(a.name)}</option>`).join('')}</select><button type="button" class="btn ghost" style="flex:0 0 auto" data-act="to-transfer">Oui</button></div><div class="tiny" style="margin-top:6px">Elle ne comptera plus en ${type === 'income' ? 'revenu' : 'dépense'}, et l’autre compte sera mis à jour.</div></div>` : ''}`;
   const foot = (isEdit ? `<button class="btn danger" data-act="del" aria-label="Supprimer">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">${isEdit ? 'Enregistrer' : type === 'income' ? 'Enregistrer le revenu' : 'Enregistrer la dépense'}</button>`;
   const F = { dateTouched: isEdit, type, splits: t?.splits ? t.splits.map(l => ({ ...l })) : null, guessed: false, autoFirst: t?.splits?.length ? false : true };
-  const drawCats = () => {
+  const drawCats = () => { setTimeout(drawRule, 0);
     const cur = val('category'); const guess = guessCategory(val('label'), type);
     const chips = [...new Set([cur, guess?.category, ...topCategories(type, 4), ...(type === 'income' ? ['Pension', 'Salaire', 'Revenus divers', 'Bungalow · Revenus', 'Ventes diverses'] : ['Alimentation', 'Voiture & transport', 'Santé et mutuelle', 'Entretien de la maison', 'Loisirs et passions'])].filter(c => c && catByName(c) && !catByName(c).hidden))].slice(0, 6);
     const c = catByName(cur);
@@ -533,6 +595,13 @@ function txForm(type, opts = {}) {
      <select id="allCats" class="in" style="display:none;margin-top:8px" data-change="pick-cat-sel" aria-label="Toutes les catégories"><option value="">Choisir une catégorie…</option>${catOptions(cur, type)}</select>
      ${c?.subs?.length ? `<div class="pills" style="margin-top:10px">${c.subs.map(s => `<button type="button" class="pill s" data-act="pick-sub" data-v="${esc(s)}" aria-pressed="${s === val('subcategory')}">${esc(s)}</button>`).join('')}</div>` : ''}`;
   };
+  function drawRule() {
+    const box = $('#ruleBox'); if (!box) return;
+    const k = ruleKey(val('label')), c = val('category'), sc = val('subcategory'), r = k ? ruleFor(val('label'), type) : null;
+    if (!k || !c || c === TODO_CAT || (r && r.category === c && (r.subcategory || '') === sc)) { box.innerHTML = r ? `<p class="tiny" style="margin:6px 0 0">Règle : « ${esc(r.match)} » → ${esc(r.category)}${r.subcategory ? ' › ' + esc(r.subcategory) : ''}</p>` : ''; return; }
+    const was = sf().elements.mkrule?.checked;
+    box.innerHTML = `<label class="toggle" style="margin-top:6px"><input type="checkbox" name="mkrule" ${was ? 'checked' : ''}> <span>Toujours classer « <b>${esc(k)}</b> » en ${esc(c)}${sc ? ' › ' + esc(sc) : ''}${r ? ' <span class="tiny">(remplace la règle actuelle)</span>' : ''}</span></label>`;
+  }
   const drawPay = () => {
     const a = accountById(val('account') || acc);
     if (type === 'expense' && $('#payBox').children.length !== payOptsFor(a?.id).length) $('#payBox').outerHTML = payButtons(a?.id, getPressed('pay'));
@@ -683,7 +752,7 @@ function txForm(type, opts = {}) {
     if (d.buysOn) { const dt = sf().querySelector('details.more'); if (dt) dt.open = true; }
     sf().dataset.dirty = '1'; }
   sheet.inputs = {
-    label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = '· devinée d’après « ' + val('label') + ' »'; drawCats(); } } },
+    label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = g.rule ? '· règle automatique' : '· devinée d’après « ' + val('label') + ' »'; drawCats(); } else drawRule(); } else drawRule(); },
     amount: () => { if (F.buys) F.amtAuto = !(parseAmount(val('amount')) > 0); updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
     'split-lbl': el => { F.splits[Number(el.dataset.i)].label = el.value; },
     'buy-amt': el => { const i = Number(el.dataset.i), b = F.buys[i]; b.amount = parseAmount(el.value) || 0; updBuySum(); tkAutoFill(b, i); tkUpd(i); },
@@ -706,6 +775,8 @@ function txForm(type, opts = {}) {
   };
   sheet.afterPress = g => { if (g === 'pay') drawPay(); };
   const orig = acts['pick-cat']; acts['pick-cat'] = b => { F.touchedCat = true; orig(b); };
+  const origSave = acts.save; acts.save = () => { const e = sf().elements, mk = e.mkrule?.checked, lbl = e.label.value, c = e.category.value, sc = e.subcategory.value, n0 = saveCount;
+    origSave(); if (mk && saveCount !== n0 && c && c !== TODO_CAT && ruleKey(lbl)) { addRule(ruleKey(lbl), c, sc, type); save(); toast('Règle créée : ' + ruleKey(lbl) + ' → ' + c); } };
   sheet.onClose = () => { try { F.rec?.abort(); } catch {} onClose(); };
   drawCats(); drawPay(); drawSplits(); drawBuys();
   if (opts.autoDict) acts.dict();
@@ -975,7 +1046,7 @@ function categoryForm(name) {
     save: () => {
       const nn = val('name').trim(); if (!nn) return alert('Donnez un nom.');
       if (nn !== name && state.categories.some(x => norm(x.name) === norm(nn))) return alert('Cette catégorie existe déjà.');
-      if (name && nn !== name) { for (const t of state.transactions) { if (t.category === name) t.category = nn; for (const l of t.splits || []) if (l.category === name) l.category = nn; } for (const s of state.schedules) if (s.category === name) s.category = nn; if (state.budgets[name] != null) { state.budgets[nn] = state.budgets[name]; delete state.budgets[name]; } }
+      if (name && nn !== name) { for (const r of state.rules || []) if (r.category === name) r.category = nn; for (const t of state.transactions) { if (t.category === name) t.category = nn; for (const l of t.splits || []) if (l.category === name) l.category = nn; } for (const s of state.schedules) if (s.category === name) s.category = nn; if (state.budgets[name] != null) { state.budgets[nn] = state.budgets[name]; delete state.budgets[name]; } }
       const n = { name: nn, group: val('group'), kind: val('kind'), subs, hidden: !!sf().elements.hidden?.checked };
       if (lookTouched) { n.icon = pickIcon; n.color = pickColor; }
       if (name) Object.assign(c, n); else state.categories.push(n);
@@ -1024,6 +1095,10 @@ function act(name, b) {
     case 'year': ui.year += Number(b.dataset.d); render(); break;
     case 'groups': groupsSheet(); break;
     case 'triage': triage(0); break;
+    case 'rules': rulesSheet(); break;
+    case 'merge': mergeSheet(); break;
+    case 'merge-undo': { let raw = null; try { raw = localStorage.getItem(KEY + '-before-merge'); } catch {} if (!raw || !confirm('Revenir aux catégories d’avant le regroupement ?\nLes opérations saisies depuis seront aussi annulées.')) break;
+      state = validate(JSON.parse(raw)); try { localStorage.removeItem(KEY + '-before-merge'); } catch {} save(); render(); toast('Regroupement annulé'); break; }
     case 'trial-reload': { const raw = localStorage.getItem(V2KEY); if (!raw) { alert('Aucune donnée v2 sur cet appareil.'); break; }
       if (!confirm('Remplacer les données de cette version d’essai par une nouvelle copie de vos données v2 ?\nLa v2 n’est pas modifiée.')) break;
       state = validate(JSON.parse(raw)); save({ noHistory: true }); render(); toast('Données recopiées depuis la v2'); break; }

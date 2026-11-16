@@ -39,7 +39,7 @@ const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
 
 /* ---------- Catégories proposées ---------- */
 const SYSTEM = { transfer: 'Virements', settlement: 'Carte différée' };
-const TODO_CAT = 'À catégoriser';
+const TODO_CAT = 'À catégoriser', OFF_CAT = 'Hors budget';
 const PRESET = [
   ['Alimentation', 'perso', 'out', ['Supermarché', 'Marché / primeur', 'Boulangerie', 'Boucherie / poissonnerie', 'Restaurant', 'Plats à emporter']],
   ['Logement', 'perso', 'out', ['Loyer ou crédit immobilier', 'Charges de copropriété', 'Travaux']],
@@ -94,6 +94,8 @@ function validate(s) {
   for (const k of ['accounts', 'transactions', 'schedules', 'categories', 'imports']) { s[k] ||= []; if (!Array.isArray(s[k])) throw Error('Sauvegarde invalide (' + k + ').'); }
   if (!Array.isArray(s.groups) || !s.groups.length) s.groups = DEFAULT_GROUPS();
   if (Array.isArray(s.categories) && !s.categories.some(c => c.name === TODO_CAT)) s.categories.unshift({ name: TODO_CAT, group: 'perso', kind: 'out', subs: [], hidden: false });
+  if (Array.isArray(s.categories) && !s.categories.some(c => c.name === OFF_CAT)) s.categories.push({ name: OFF_CAT, group: 'perso', kind: 'both', subs: ['Avance / prêt à un proche', 'Remboursement d’un proche', 'Achat pour quelqu’un', 'Correction'], hidden: false });
+  if (!Array.isArray(s.rules)) s.rules = [];
   if (!s.groups.some(g => g.id === 'perso')) s.groups.unshift({ id: 'perso', name: 'Vie courante', tab: false });
   s.budgets ||= {}; s.settings ||= {}; s.settings.bungalowRates ||= { Airbnb: 15, Booking: 17 };
   for (const a of s.accounts) if (!a || typeof a.id !== 'string' || typeof a.name !== 'string') throw Error('Compte invalide.');
@@ -208,7 +210,7 @@ function monthTotals(month, group = 'all', acc = '') {
   for (const t of state.transactions) {
     if (!inBudget(t) || budgetMonthOf(t) !== month || (acc && t.account !== acc)) continue;
     for (const p of parts(t)) {
-      if (!inView(p.category, group)) continue;
+      if (p.category === OFF_CAT || !inView(p.category, group)) continue;
       r[t.type] += p.amount;
       const k = t.type + '|' + p.category; r.byCat[k] = (r.byCat[k] || 0) + p.amount;
       const ks = k + '|' + p.subcategory; r.bySub[ks] = (r.bySub[ks] || 0) + p.amount;
@@ -232,7 +234,51 @@ function labelScore(a, b) {
   const fa = firstWord(ka), fb = firstWord(kb);
   return fa.length >= 3 && fa === fb ? 1 : 0;
 }
+/* ---------- Règles de classement (« toujours classer … en … ») ---------- */
+const ruleText = s => norm(s).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+/* une règle correspond si tous ses mots sont dans le libellé (dans n'importe quel ordre) */
+const ruleMatches = (m, label) => { const w = ruleText(m).split(' ').filter(Boolean), l = ' ' + ruleText(label) + ' '; return !!w.length && w.every(x => l.includes(' ' + x + ' ')); };
+function ruleFor(label, type) {
+  let best = null;
+  for (const r of state.rules || []) { const m = ruleText(r.match); if (m && ruleMatches(m, label) && (!r.type || !type || r.type === type) && catByName(r.category) && (!best || m.length > ruleText(best.match).length)) best = r; }
+  return best;
+}
+function addRule(match, category, subcategory, type) {
+  const m = ruleText(match); if (!m) return null;
+  state.rules ||= [];
+  let r = state.rules.find(x => ruleText(x.match) === m && (x.type || '') === (type || ''));
+  if (r) Object.assign(r, { category, subcategory: subcategory || '' }); else { r = { id: uid(), match: m.toUpperCase(), category, subcategory: subcategory || '', type: type || '' }; state.rules.push(r); }
+  return r;
+}
+/* Mot-clé proposé pour une règle : le libellé sans les mots bancaires (PRLV, CB, VIR…), 2 mots au plus */
+const ruleKey = l => labelKey(l).toUpperCase();
+/* ---------- Regroupement en grandes catégories ---------- */
+const MERGE_PLAN = [
+  ['Logement & énergie', ['Logement', 'Énergie et eau', 'Entretien de la maison']],
+  ['Transport', ['Voiture & transport']],
+  ['Santé', ['Santé et mutuelle', 'Hygiène et soins']],
+  ['Assurances & banque', ['Assurances', 'Frais bancaires']],
+  ['Abonnements & télécom', ['Téléphone et internet', 'Abonnements']],
+  ['Achats & cadeaux', ['Achats', 'Cadeaux et dons']],
+  ['Loisirs & vacances', ['Loisirs et passions', 'Vacances et voyages']]
+];
+function mergeCategories(target, sources) {
+  const srcs = sources.map(catByName).filter(Boolean); if (!srcs.length) return 0;
+  let T = catByName(target);
+  if (!T) { T = { name: target, group: srcs[0].group, kind: srcs[0].kind, subs: [], hidden: false }; state.categories.splice(state.categories.indexOf(srcs[0]), 0, T); }
+  const addSub = x => { if (x && !T.subs.some(y => norm(y) === norm(x))) T.subs.push(x); };
+  for (const c of srcs) if (c !== T) (c.subs || []).forEach(addSub);
+  let n = 0;
+  const fix = o => { if (o && sources.includes(o.category) && o.category !== target) { const ns = o.subcategory || o.category; o.category = target; o.subcategory = ns; addSub(ns); n++; } };
+  for (const t of state.transactions) { fix(t); for (const l of t.splits || []) fix(l); }
+  for (const s of state.schedules) fix(s);
+  for (const r of state.rules || []) fix(r);
+  for (const c of srcs) if (c !== T && state.budgets[c.name] != null) { state.budgets[target] = (state.budgets[target] || 0) + state.budgets[c.name]; delete state.budgets[c.name]; }
+  state.categories = state.categories.filter(c => c === T || !srcs.includes(c));
+  return n;
+}
 function guessCategory(label, type) {
+  const rule = ruleFor(label, type); if (rule) return { category: rule.category, subcategory: rule.subcategory || '', rule: true };
   let best = null, bestScore = 0;
   const pool = [...state.transactions.filter(t => t.treatment !== 'transfer' && t.treatment !== 'settlement' && t.category !== 'Autres' && t.category !== TODO_CAT), ...state.schedules.map(s => ({ ...s, date: s.start + '-01' }))];
   for (const t of pool) {
@@ -344,7 +390,7 @@ function monthPlanned(month, group = 'all', acc = '') {
   const r = { income: 0, expense: 0 };
   const add = d => {
     if (d.type === 'transfer' || (acc && d.account !== acc)) return;
-    if (!inView(d.category, group)) return;
+    if (d.category === OFF_CAT || !inView(d.category, group)) return;
     r[d.type] += d.amount;
   };
   for (const d of dueList(month, acc)) if (!d.sched?.nextMonthBudget && !(d.tx?.budgetMonth && d.tx.budgetMonth !== month)) add(d);
