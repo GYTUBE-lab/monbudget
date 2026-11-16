@@ -131,12 +131,12 @@ function catPicker(o) {
 function rulesSheet() {
   const rules = [...(state.rules || [])].sort((a, b) => a.match.localeCompare(b.match));
   const body = `<p class="small" style="margin:0">Une règle classe automatiquement une opération dont le libellé contient le mot-clé, à l’import du relevé et à la saisie.</p>`
-    + (rules.length ? `<div class="card list" style="padding:0 14px">${rules.map(r => `<button type="button" class="row-item" data-act="rule-edit" data-id="${esc(r.id)}">${cico(r.category)}<span class="grow"><span class="t" style="display:block">« ${esc(r.match)} »</span><span class="s" style="display:block">→ ${esc(r.category)}${r.subcategory ? ' › ' + esc(r.subcategory) : ''}${r.type ? ' · ' + (r.type === 'income' ? 'revenus' : 'dépenses') : ''}</span></span>${ic('r', 18)}</button>`).join('')}</div>` : '<p class="empty">Aucune règle pour l’instant. Elles se créent en classant vos opérations (case « Toujours classer… »), ou ici.</p>')
+    + (rules.length ? `<div class="card list" style="padding:0 14px">${rules.map(r => `<button type="button" class="row-item" data-act="rule-edit" data-id="${esc(r.id)}">${cico(r.category)}<span class="grow"><span class="t" style="display:block">« ${esc(r.match)} »${r.amount ? ' · ' + money(r.amount) : ''}</span><span class="s" style="display:block">→ ${esc(r.category)}${r.subcategory ? ' › ' + esc(r.subcategory) : ''}${r.type ? ' · ' + (r.type === 'income' ? 'revenus' : 'dépenses') : ''}</span></span>${ic('r', 18)}</button>`).join('')}</div>` : '<p class="empty">Aucune règle pour l’instant. Elles se créent en classant vos opérations (case « Toujours classer… »), ou ici.</p>')
     + (todoTx().length ? `<button type="button" class="btn ghost full" data-act="rule-apply">Appliquer les règles aux ${todoTx().length} opération(s) à catégoriser</button>` : '');
   openSheet('Règles de classement', body, `<button class="btn full" data-act="rule-new">${ic('plus', 18)} Nouvelle règle</button>`, {
     'rule-edit': b => ruleForm(state.rules.find(r => r.id === b.dataset.id)),
     'rule-new': () => ruleForm(null),
-    'rule-apply': () => { let n = 0; for (const t of todoTx()) { const r = ruleFor(t.label, t.type); if (r && !t.splits?.length) { t.category = r.category; t.subcategory = r.subcategory || ''; n++; } } save(); render(); rulesSheet(); toast(n ? n + ' opération(s) classée(s)' : 'Aucune ne correspond à une règle'); }
+    'rule-apply': () => { let n = 0; for (const t of todoTx()) { const r = ruleFor(t.label, t.type, t.amount); if (r && !t.splits?.length) { t.category = r.category; t.subcategory = r.subcategory || ''; n++; } } save(); render(); rulesSheet(); toast(n ? n + ' opération(s) classée(s)' : 'Aucune ne correspond à une règle'); }
   });
 }
 function ruleForm(r) {
@@ -144,17 +144,18 @@ function ruleForm(r) {
   const drawCat = () => { $('#ruleCat').innerHTML = R.category ? `${cico(R.category)}<span class="grow"><span class="t">${esc(R.category)}</span><span class="s">${esc(R.subcategory || 'Toute la catégorie')}</span></span><span class="link">Changer</span>` : `${cico(TODO_CAT)}<span class="grow"><span class="t">Choisir la catégorie</span></span>`; };
   const count = () => { const m = ruleText(val('match')); const n = m ? state.transactions.filter(t => !t.treatment && ruleMatches(m, t.label)).length : 0; $('#ruleCount').textContent = m ? n + ' opération(s) déjà enregistrée(s) contiennent ce mot-clé.' : ''; };
   openSheet(r ? 'Modifier la règle' : 'Nouvelle règle', `<label class="f">Le libellé contient<input name="match" value="${esc(R.match)}" placeholder="Ex. PHARMACIE, LECLERC, EDF" autocomplete="off" style="text-transform:uppercase"></label><p class="tiny" id="ruleCount" style="margin:-6px 0 0"></p>
+    <label class="f">Montant exact <span class="tiny" style="font-weight:500">· facultatif, utile pour un libellé comme « PRELEVEMENT SEPA »</span><input name="ramount" inputmode="decimal" value="${R.amount ? amountInput(R.amount) : ''}" placeholder="Tous les montants"></label>
     <fieldset><legend>Pour</legend><div class="seg light">${[['expense', 'Dépenses'], ['income', 'Revenus'], ['', 'Les deux']].map(([v, l]) => `<button type="button" data-group="rtype" data-v="${v}" aria-pressed="${(R.type || '') === v}">${l}</button>`).join('')}</div></fieldset>
     <fieldset><legend>Classer en</legend><button type="button" class="cp-field" id="ruleCat" data-act="rule-cat"></button></fieldset>
     ${r ? '<label class="toggle"><input type="checkbox" name="reapply"> Reclasser aussi les opérations déjà enregistrées qui contiennent ce mot-clé</label>' : '<label class="toggle"><input type="checkbox" name="reapply" checked> Classer aussi les opérations « À catégoriser » qui contiennent ce mot-clé</label>'}`,
     (r ? `<button class="btn danger" data-act="del" aria-label="Supprimer la règle">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">Enregistrer</button>`, {
     'rule-cat': () => catPicker({ type: getPressed('rtype') || 'expense', cat: R.category, sub: R.subcategory, todo: false, onPick: (c, s) => { R.category = c; R.subcategory = s; drawCat(); } }),
     save: () => { const m = ruleText(val('match')); if (!m) return alert('Indiquez un mot-clé.'); if (!R.category) return alert('Choisissez la catégorie.');
-      const typ = getPressed('rtype') || '';
-      if (r) Object.assign(state.rules.find(x => x.id === r.id), { match: m.toUpperCase(), category: R.category, subcategory: R.subcategory || '', type: typ });
-      else addRule(m, R.category, R.subcategory, typ);
+      const typ = getPressed('rtype') || '', am = parseAmount(val('ramount')) || 0;
+      if (r) { const x = state.rules.find(y => y.id === r.id); Object.assign(x, { match: m.toUpperCase(), category: R.category, subcategory: R.subcategory || '', type: typ }); if (am) x.amount = am; else delete x.amount; }
+      else addRule(m, R.category, R.subcategory, typ, am);
       let n = 0;
-      if (sf().elements.reapply.checked) for (const t of state.transactions) { if (t.treatment || t.splits?.length || (typ && t.type !== typ)) continue; if (!r && t.category !== TODO_CAT) continue; if (ruleMatches(m, t.label)) { t.category = R.category; t.subcategory = R.subcategory || ''; n++; } }
+      if (sf().elements.reapply.checked) for (const t of state.transactions) { if (t.treatment || t.splits?.length || (typ && t.type !== typ)) continue; if (!r && t.category !== TODO_CAT) continue; if (am && t.amount !== am) continue; if (ruleMatches(m, t.label)) { t.category = R.category; t.subcategory = R.subcategory || ''; n++; } }
       save(); render(); rulesSheet(); toast('Règle enregistrée' + (n ? ' · ' + n + ' opération(s) reclassée(s)' : '')); },
     del: () => { if (!confirm('Supprimer cette règle ? Les opérations déjà classées ne changent pas.')) return; state.rules = state.rules.filter(x => x.id !== r.id); save(); rulesSheet(); toast('Règle supprimée'); }
   }, { back: 'rules-back' });
@@ -182,11 +183,11 @@ function triage(i = 0) {
   const list = todoTx(), d = $('#catpick');
   if (!list.length) { if (d.open) d.close(); render(); toast('Tout est classé ✓'); return; }
   if (i >= list.length) { if (d.open) d.close(); render(); toast(list.length + ' opération' + (list.length > 1 ? 's' : '') + ' encore à classer'); return; }
-  const t = list[i], rk = ruleKey(t.label), key = labelKey(t.label), similar = key ? list.filter(x => x !== t && x.type === t.type && labelKey(x.label) === key) : [];
+  const t = list[i], rp = ruleProposal(t.label, t.amount), key = labelKey(t.label) || (rp ? ruleText(t.label) : ''), similar = key ? list.filter(x => x !== t && x.type === t.type && (labelKey(x.label) ? labelKey(x.label) === key : (rp?.amount ? ruleText(x.label) === key && x.amount === t.amount : false))) : [];
   const head = `<div class="cp-op"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><div style="min-width:0"><div class="b" style="font-size:17px">${esc(t.label)}</div><div class="small">${dateFR(t.date)} · ${esc(accName(t.account))}</div></div><div class="big ${t.type === 'income' ? 'pos' : 'neg'}">${t.type === 'income' ? '+' : '−'}${money(t.amount)}</div></div><div class="tiny" style="margin-top:4px">${i + 1} sur ${list.length} à classer${t.note ? ' · ' + esc(t.note) : ''}</div></div>`;
-  const foot = `<div class="sheet-foot" style="flex-direction:column;gap:8px">${rk ? `<label class="toggle" style="margin:0"><input type="checkbox" id="cpRule" checked> Toujours classer ainsi les « ${esc(rk)} » (règle)</label>` : ''}${similar.length ? `<label class="toggle" style="margin:0"><input type="checkbox" id="cpSame" checked> Classer pareil les ${similar.length} autre${similar.length > 1 ? 's' : ''} « ${esc(key.toUpperCase())} »</label>` : ''}<div style="display:flex;gap:10px"><button type="button" class="btn ghost" style="flex:1" data-cp="skip">Passer</button><button type="button" class="btn ghost" style="flex:1" data-cp="stop">Terminer</button></div></div>`;
+  const foot = `<div class="sheet-foot" style="flex-direction:column;gap:8px">${rp ? `<label class="toggle" style="margin:0"><input type="checkbox" id="cpRule" checked> Toujours classer ainsi les ${esc(ruleProposalText(rp))} (règle)</label>` : ''}${similar.length ? `<label class="toggle" style="margin:0"><input type="checkbox" id="cpSame" checked> Classer pareil les ${similar.length} autre${similar.length > 1 ? 's' : ''} ${esc(ruleProposalText(rp || { match: key.toUpperCase() }))}</label>` : ''}<div style="display:flex;gap:10px"><button type="button" class="btn ghost" style="flex:1" data-cp="skip">Passer</button><button type="button" class="btn ghost" style="flex:1" data-cp="stop">Terminer</button></div></div>`;
   catPicker({ type: t.type, title: 'Classer l’opération', head, foot, todo: false,
-    onPick: (c, s) => { const same = $('#cpSame')?.checked; if (rk && $('#cpRule')?.checked && c !== TODO_CAT) addRule(rk, c, s, t.type); for (const x of [t, ...(same ? similar : [])]) { x.category = c; x.subcategory = s; if (x.splits) for (const l of x.splits) if (l.category === TODO_CAT) { l.category = c; l.subcategory = s; } } save(); render(); triage(i); return true; },
+    onPick: (c, s) => { const same = $('#cpSame')?.checked; if (rp && $('#cpRule')?.checked && c !== TODO_CAT && c !== OFF_CAT) addRule(rp.match, c, s, t.type, rp.amount); for (const x of [t, ...(same ? similar : [])]) { x.category = c; x.subcategory = s; if (x.splits) for (const l of x.splits) if (l.category === TODO_CAT) { l.category = c; l.subcategory = s; } } save(); render(); triage(i); return true; },
     acts: { skip: () => triage(i + 1), stop: () => { d.close(); render(); } } });
 }
 /* Compte proposé dans les saisies : celui choisi en haut de l'écran, sinon le compte par défaut */
@@ -587,7 +588,7 @@ function txForm(type, opts = {}) {
   const foot = (isEdit ? `<button class="btn danger" data-act="del" aria-label="Supprimer">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">${isEdit ? 'Enregistrer' : type === 'income' ? 'Enregistrer le revenu' : 'Enregistrer la dépense'}</button>`;
   const F = { dateTouched: isEdit, type, splits: t?.splits ? t.splits.map(l => ({ ...l })) : null, guessed: false, autoFirst: t?.splits?.length ? false : true };
   const drawCats = () => { setTimeout(drawRule, 0);
-    const cur = val('category'); const guess = guessCategory(val('label'), type);
+    const cur = val('category'); const guess = guessCategory(val('label'), type, parseAmount(val('amount')) || 0);
     const chips = [...new Set([cur, guess?.category, ...topCategories(type, 4), ...(type === 'income' ? ['Pension', 'Salaire', 'Revenus divers', 'Bungalow · Revenus', 'Ventes diverses'] : ['Alimentation', 'Voiture & transport', 'Santé et mutuelle', 'Entretien de la maison', 'Loisirs et passions'])].filter(c => c && catByName(c) && !catByName(c).hidden))].slice(0, 6);
     const c = catByName(cur);
     $('#catBox').innerHTML = `<button type="button" class="cp-field" data-act="cat-open">${cur ? cico(cur) + `<span class="grow"><span class="t">${esc(cur)}</span>${val('subcategory') ? `<span class="s">${esc(val('subcategory'))}</span>` : `<span class="s">Toute la catégorie</span>`}</span>` : cico(TODO_CAT) + '<span class="grow"><span class="t">Choisir une catégorie</span><span class="s">Toutes les catégories, avec recherche</span></span>'}<span class="link">${cur ? 'Changer' : 'Choisir'}</span></button>
@@ -597,10 +598,10 @@ function txForm(type, opts = {}) {
   };
   function drawRule() {
     const box = $('#ruleBox'); if (!box) return;
-    const k = ruleKey(val('label')), c = val('category'), sc = val('subcategory'), r = k ? ruleFor(val('label'), type) : null;
-    if (!k || !c || c === TODO_CAT || (r && r.category === c && (r.subcategory || '') === sc)) { box.innerHTML = r ? `<p class="tiny" style="margin:6px 0 0">Règle : « ${esc(r.match)} » → ${esc(r.category)}${r.subcategory ? ' › ' + esc(r.subcategory) : ''}</p>` : ''; return; }
+    const amt = parseAmount(val('amount')) || 0, rp = ruleProposal(val('label'), amt), k = rp && ruleProposalText(rp), c = val('category'), sc = val('subcategory'), r = rp ? ruleFor(val('label'), type, amt) : null;
+    if (!k || !c || c === OFF_CAT || c === TODO_CAT || (r && r.category === c && (r.subcategory || '') === sc)) { box.innerHTML = r ? `<p class="tiny" style="margin:6px 0 0">Règle : « ${esc(r.match)} » → ${esc(r.category)}${r.subcategory ? ' › ' + esc(r.subcategory) : ''}</p>` : ''; return; }
     const was = sf().elements.mkrule?.checked;
-    box.innerHTML = `<label class="toggle" style="margin-top:6px"><input type="checkbox" name="mkrule" ${was ? 'checked' : ''}> <span>Toujours classer « <b>${esc(k)}</b> » en ${esc(c)}${sc ? ' › ' + esc(sc) : ''}${r ? ' <span class="tiny">(remplace la règle actuelle)</span>' : ''}</span></label>`;
+    box.innerHTML = `<label class="toggle" style="margin-top:6px"><input type="checkbox" name="mkrule" ${was ? 'checked' : ''}> <span>Toujours classer les <b>${esc(k)}</b> en ${esc(c)}${sc ? ' › ' + esc(sc) : ''}${r ? ' <span class="tiny">(remplace la règle actuelle)</span>' : ''}</span></label>`;
   }
   const drawPay = () => {
     const a = accountById(val('account') || acc);
@@ -752,7 +753,7 @@ function txForm(type, opts = {}) {
     if (d.buysOn) { const dt = sf().querySelector('details.more'); if (dt) dt.open = true; }
     sf().dataset.dirty = '1'; }
   sheet.inputs = {
-    label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = g.rule ? '· règle automatique' : '· devinée d’après « ' + val('label') + ' »'; drawCats(); } else drawRule(); } else drawRule(); },
+    label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type, parseAmount(val('amount')) || 0); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = g.rule ? '· règle automatique' : g.sameAmount ? '· même libellé et même montant qu’avant' : '· devinée d’après « ' + val('label') + ' »'; drawCats(); } else drawRule(); } else drawRule(); },
     amount: () => { if (F.buys) F.amtAuto = !(parseAmount(val('amount')) > 0); updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
     'split-lbl': el => { F.splits[Number(el.dataset.i)].label = el.value; },
     'buy-amt': el => { const i = Number(el.dataset.i), b = F.buys[i]; b.amount = parseAmount(el.value) || 0; updBuySum(); tkAutoFill(b, i); tkUpd(i); },
@@ -776,7 +777,8 @@ function txForm(type, opts = {}) {
   sheet.afterPress = g => { if (g === 'pay') drawPay(); };
   const orig = acts['pick-cat']; acts['pick-cat'] = b => { F.touchedCat = true; orig(b); };
   const origSave = acts.save; acts.save = () => { const e = sf().elements, mk = e.mkrule?.checked, lbl = e.label.value, c = e.category.value, sc = e.subcategory.value, n0 = saveCount;
-    origSave(); if (mk && saveCount !== n0 && c && c !== TODO_CAT && ruleKey(lbl)) { addRule(ruleKey(lbl), c, sc, type); save(); toast('Règle créée : ' + ruleKey(lbl) + ' → ' + c); } };
+    const rp = ruleProposal(lbl, parseAmount(e.amount.value) || 0);
+    origSave(); if (mk && saveCount !== n0 && c && c !== TODO_CAT && rp) { addRule(rp.match, c, sc, type, rp.amount); save(); toast('Règle créée : ' + ruleProposalText(rp) + ' → ' + c); } };
   sheet.onClose = () => { try { F.rec?.abort(); } catch {} onClose(); };
   drawCats(); drawPay(); drawSplits(); drawBuys();
   if (opts.autoDict) acts.dict();

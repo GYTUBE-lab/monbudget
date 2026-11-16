@@ -238,18 +238,23 @@ function labelScore(a, b) {
 const ruleText = s => norm(s).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 /* une règle correspond si tous ses mots sont dans le libellé (dans n'importe quel ordre) */
 const ruleMatches = (m, label) => { const w = ruleText(m).split(' ').filter(Boolean), l = ' ' + ruleText(label) + ' '; return !!w.length && w.every(x => l.includes(' ' + x + ' ')); };
-function ruleFor(label, type) {
+function ruleFor(label, type, amount) {
   let best = null;
-  for (const r of state.rules || []) { const m = ruleText(r.match); if (m && ruleMatches(m, label) && (!r.type || !type || r.type === type) && catByName(r.category) && (!best || m.length > ruleText(best.match).length)) best = r; }
+  for (const r of state.rules || []) { const m = ruleText(r.match); if (m && ruleMatches(m, label) && (!r.amount || r.amount === amount) && (!r.type || !type || r.type === type) && catByName(r.category) && (!best || m.length > ruleText(best.match).length)) best = r; }
   return best;
 }
-function addRule(match, category, subcategory, type) {
+function addRule(match, category, subcategory, type, amount) {
   const m = ruleText(match); if (!m) return null;
   state.rules ||= [];
-  let r = state.rules.find(x => ruleText(x.match) === m && (x.type || '') === (type || ''));
-  if (r) Object.assign(r, { category, subcategory: subcategory || '' }); else { r = { id: uid(), match: m.toUpperCase(), category, subcategory: subcategory || '', type: type || '' }; state.rules.push(r); }
+  let r = state.rules.find(x => ruleText(x.match) === m && (x.type || '') === (type || '') && (x.amount || 0) === (amount || 0));
+  if (r) Object.assign(r, { category, subcategory: subcategory || '' }); else { r = { id: uid(), match: m.toUpperCase(), category, subcategory: subcategory || '', type: type || '' }; if (amount) r.amount = amount; state.rules.push(r); }
   return r;
 }
+/* Libellé générique (PRELEVEMENT SEPA, CARTE, VIREMENT…) : il ne dit pas qui est payé, seul le montant permet de reconnaître l'opération */
+const isGeneric = l => !!ruleText(l) && !labelKey(l);
+/* Proposition de règle pour un libellé : mot-clé, et montant exact si le libellé est générique */
+const ruleProposal = (label, amount) => labelKey(label) ? { match: labelKey(label).toUpperCase(), amount: 0 } : isGeneric(label) && amount ? { match: ruleText(label).toUpperCase(), amount } : null;
+const ruleProposalText = p => '« ' + p.match + ' »' + (p.amount ? ' de ' + money(p.amount) : '');
 /* Mot-clé proposé pour une règle : le libellé sans les mots bancaires (PRLV, CB, VIR…), 2 mots au plus */
 const ruleKey = l => labelKey(l).toUpperCase();
 /* ---------- Regroupement en grandes catégories ---------- */
@@ -277,8 +282,13 @@ function mergeCategories(target, sources) {
   state.categories = state.categories.filter(c => c === T || !srcs.includes(c));
   return n;
 }
-function guessCategory(label, type) {
-  const rule = ruleFor(label, type); if (rule) return { category: rule.category, subcategory: rule.subcategory || '', rule: true };
+function guessCategory(label, type, amount) {
+  const rule = ruleFor(label, type, amount); if (rule) return { category: rule.category, subcategory: rule.subcategory || '', rule: true };
+  if (isGeneric(label)) { // même libellé générique et même montant qu'une opération déjà classée
+    if (!amount) return null;
+    const k = ruleText(label), prev = [...state.transactions].sort((a, b) => b.date.localeCompare(a.date)).find(t => t.type === type && t.amount === amount && !t.treatment && !t.splits?.length && ![TODO_CAT, 'Autres'].includes(t.category) && ruleText(t.label) === k);
+    return prev ? { category: prev.category, subcategory: prev.subcategory || '', sameAmount: true } : null;
+  }
   let best = null, bestScore = 0;
   const pool = [...state.transactions.filter(t => t.treatment !== 'transfer' && t.treatment !== 'settlement' && t.category !== 'Autres' && t.category !== TODO_CAT), ...state.schedules.map(s => ({ ...s, date: s.start + '-01' }))];
   for (const t of pool) {
@@ -546,7 +556,7 @@ function analyseCSV(text, accId) {
     const label = (cLabel >= 0 ? r[cLabel] : '').replace(/\s+/g, ' ').trim() || 'Opération importée';
     const type = v > 0 ? 'income' : 'expense', amount = Math.abs(v);
     const dup = state.transactions.some(t => t.account === accId && t.date === date && t.amount === amount && t.type === type && (norm(t.label) === norm(label) || norm(t.bankLabel || '') === norm(label)));
-    const g = guessCategory(label, type);
+    const g = guessCategory(label, type, amount);
     const bankCat = cCat >= 0 ? (r[cCat] || '').trim() : '';
     const known = bankCat && state.categories.find(c => norm(c.name) === norm(bankCat));
     items.push({ date, label, type, amount, dup, category: g?.category || known?.name || TODO_CAT, subcategory: g?.subcategory || '', note: !g && bankCat && !known ? 'Catégorie banque : ' + bankCat : '' });
