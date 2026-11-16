@@ -574,7 +574,7 @@ function txForm(type, opts = {}) {
   const cat = t?.category || opts.category || '';
   const acc = t?.account || opts.account || formAcc();
   const deferredTx = t && isDeferredAcc(accountById(t.account));
-  const pay = t ? (t.payment === 'deferred' ? 'card' : (t.payment === 'card' || t.payment === 'immediate') ? (deferredTx ? 'cardNow' : 'card') : t.payment) : (opts.payment || (type === 'income' ? 'transfer' : 'card'));
+  const pay = t ? (t.payment === 'deferred' ? 'card' : (t.payment === 'card' || t.payment === 'immediate') ? (deferredTx ? 'cardNow' : 'card') : t.payment) : (opts.payment || (accountById(acc)?.type === 'especes' ? 'cash' : type === 'income' ? 'transfer' : 'card'));
   const date = t?.date || opts.date || today();
   const payOptsFor = accId => { const o = type === 'income' ? [['transfer', 'Virement'], ['cash', 'Espèces'], ['cheque', 'Chèque']] : isDeferredAcc(accountById(accId)) ? [['card', 'Carte différée'], ['cardNow', 'Carte immédiate'], ['directDebit', 'Prélèvement / virement'], ['cash', 'Espèces']] : [['card', 'Carte'], ['directDebit', 'Prélèvement / virement'], ['cash', 'Espèces']]; if (t && !o.some(p => p[0] === pay) && pay !== 'cardNow' && pay !== 'card') o.push([pay, payLabel(pay)]); return o; };
   const payButtons = (accId, sel) => { const o = payOptsFor(accId); if (!o.some(p => p[0] === sel)) sel = sel === 'cardNow' ? 'card' : o[0][0]; return `<div class="opts" id="payBox" style="${o.length === 4 ? 'grid-template-columns:repeat(2,minmax(0,1fr))' : ''}">${o.map(([v, l]) => `<button type="button" class="opt" data-group="pay" data-v="${v}" aria-pressed="${v === sel}">${l}</button>`).join('')}</div>`; };
@@ -794,7 +794,13 @@ function txForm(type, opts = {}) {
       if (el.name === 'buys') { if (el.checked) { sf().elements.split.checked = false; drawSplits(); 
         if (isDeferredAcc(accountById(val('account'))) && getPressed('pay') !== 'card') { sf().querySelectorAll('[data-group="pay"]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === 'card'))); drawPay(); } } drawBuys(); } }
   };
-  sheet.afterPress = g => { if (g === 'pay') { const ca = activeAccounts().find(x => x.type === 'especes'), e = sf().elements; if (getPressed('pay') === 'cash' && ca && accountById(e.account.value)?.type !== 'especes') { e.account.value = ca.id; toast('Compte « ' + ca.name + ' » choisi'); } drawPay(); } };
+  /* Espèces → compte Espèces (créé si besoin) ; autres moyens de paiement → compte en banque */
+  const bankAcc = () => { const d = accountById(state.settings.defaultAccount); return d && !d.archived && d.type !== 'especes' ? d.id : activeAccounts().find(x => x.type !== 'especes')?.id; };
+  const cashAcc = () => { let ca = activeAccounts().find(x => x.type === 'especes'); if (!ca) { ca = makeAccount({ name: 'Espèces', type: 'especes', card: 'aucune', opening: '0', start: (val('date') || today()).slice(0, 8) + '01' }); state.accounts.push(ca); save(); toast('Compte « Espèces » créé (porte-monnaie)'); } return ca; };
+  sheet.afterPress = g => { if (g !== 'pay') return; const e = sf().elements, cur = accountById(e.account.value);
+    if (getPressed('pay') === 'cash') { if (cur?.type !== 'especes') { const ca = cashAcc(); e.account.innerHTML = accOptions(ca.id); e.account.value = ca.id; } }
+    else if (cur?.type === 'especes') { const b = bankAcc(); if (b) e.account.value = b; }
+    drawPay(); };
   acts['use-cash'] = () => { let ca = activeAccounts().find(x => x.type === 'especes');
     if (!ca) { ca = makeAccount({ name: 'Espèces', type: 'especes', card: 'aucune', opening: '0', start: (val('date') || today()).slice(0, 8) + '01' }); state.accounts.push(ca); save(); toast('Compte « Espèces » créé (porte-monnaie)'); }
     const e = sf().elements; e.account.innerHTML = accOptions(ca.id); e.account.value = ca.id; drawPay(); };
