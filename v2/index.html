@@ -188,12 +188,37 @@ table.t td{border-top:1px solid var(--line);padding:9px 0;text-align:right}
 .qdates .chip{height:34px;padding:0 14px;border-radius:17px;border:1px solid var(--field);background:#fff;color:var(--ink,inherit);font:600 13px inherit;font-family:inherit;cursor:pointer}
 .qdates .chip[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
 .update-bar{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 8px);z-index:9999;border:0;border-radius:14px;padding:12px 14px;background:var(--coral,#e4572e);color:#fff;font:700 14px inherit;font-family:inherit;box-shadow:0 6px 20px rgba(0,0,0,.2);cursor:pointer}
+.trial{background:#fff4d6;color:#6b4e00;font-size:12.5px;text-align:center;padding:6px 10px;line-height:1.4}
+.trial button{background:none;border:0;color:#6b4e00;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
+.cico{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;color:var(--c);background:#f1f4f5;background:color-mix(in srgb,var(--c) 13%,#fff)}
+.cico.sm{width:24px;height:24px}
+.cp-search{display:flex;align-items:center;gap:8px;margin:0 20px 6px;border:1px solid var(--field);border-radius:12px;padding:0 12px;height:44px;color:var(--muted)}
+.cp-search input{flex:1;border:0;outline:0;font:inherit;font-size:16px;background:none;color:var(--ink);min-width:0}
+.cp-list{gap:0!important;padding-top:0!important}
+.cp-sec{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:14px 0 4px}
+.cp-row{display:flex;align-items:center;gap:12px;width:100%;padding:10px 0;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;font:inherit;font-size:16.5px;color:var(--ink);cursor:pointer}
+.cp-row .grow{flex:1;min-width:0}.cp-row .s{display:block;font-size:13px;color:var(--muted)}
+.cp-row[aria-current=true]{font-weight:800}
+.cp-subs{margin:2px 0 6px 17px;padding-left:20px;border-left:3px solid var(--c)}
+.cp-subs .cp-row{font-size:15.5px;padding:9px 0;border-bottom:0}
+.cp-op{margin:0 20px 10px;padding:12px 14px;border-radius:14px;background:var(--teal-l)}
+.cp-op .big{font-size:24px;font-weight:800}
+.cp-field{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:1px solid var(--field);border-radius:14px;background:#fff;font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+.cp-field .grow{flex:1;min-width:0}.cp-field .t{display:block;font-weight:700}.cp-field .s{display:block;font-size:13px;color:var(--muted)}
+.pill .cico.sm{width:20px;height:20px;margin-right:2px;vertical-align:middle;display:inline-grid}
+.icgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px}
+.icopt{height:44px;border-radius:12px;border:1px solid var(--field);background:#fff;color:var(--c);display:grid;place-items:center;cursor:pointer}
+.icopt[aria-pressed=true]{border:2px solid var(--c);background:color-mix(in srgb,var(--c) 13%,#fff)}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.sw{width:32px;height:32px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px var(--field);cursor:pointer}
+.sw[aria-pressed=true]{box-shadow:0 0 0 2px var(--ink)}
 </style>
 </head>
 <body>
 <div id="app" class="app"><div class="loading">Chargement…</div></div>
 <nav class="tabs" id="tabs" aria-label="Navigation principale" hidden></nav>
 <dialog class="sheet" id="sheet"></dialog>
+<dialog class="sheet" id="catpick" aria-label="Catégorie"></dialog>
 <dialog class="picker" id="picker" aria-label="Calendrier"></dialog>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="../config.js"></script>

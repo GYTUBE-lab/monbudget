@@ -13,6 +13,183 @@ const IC = {
   minus: '<path d="M5 12h14"/>', edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>', mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
 };
 const ic = (n, s, w) => I(IC[n], s, w);
+/* ---------- Classification : icônes et couleurs des catégories ---------- */
+const CI = {
+  cart: '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.2a1 1 0 0 0 1 .8h9.6a1 1 0 0 0 1-.8L21 7H6"/>',
+  fork: '<path d="M7 3v7a2 2 0 0 0 2 2v9M5 3v5M9 3v5M17 21V3c-2 1-3.5 4-3.5 8H17"/>',
+  house: '<path d="M3 11 12 4l9 7"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-6h4v6"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  car: '<path d="M3 16v-3.5L5 7h14l2 5.5V16z"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/><path d="M3 12h18"/>',
+  shield: '<path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  heart: '<path d="M12 20s-7.5-4.6-9-9.2A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 9 3.8C19.5 15.4 12 20 12 20z"/><path d="M7 12h2.5l1.5-2.5 2 5 1.5-2.5H17"/>',
+  wifi: '<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r=".8"/>',
+  play: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/>',
+  tool: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
+  sparkle: '<path d="M12 3c.8 4.4 2.6 6.2 7 7-4.4.8-6.2 2.6-7 7-.8-4.4-2.6-6.2-7-7 4.4-.8 6.2-2.6 7-7z"/><path d="M19 17v4M17 19h4"/>',
+  bag: '<path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+  fun: '<path d="M8 21h8M12 14v7M4 3h16l-8 11z"/><path d="M15 7.5a3 3 0 1 0 2-5"/>',
+  plane: '<path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 4-4"/>',
+  paw: '<circle cx="6.5" cy="10" r="1.7"/><circle cx="10" cy="5.8" r="1.7"/><circle cx="14" cy="5.8" r="1.7"/><circle cx="17.5" cy="10" r="1.7"/><path d="M8 18c0-3 1.8-5.5 4-5.5s4 2.5 4 5.5a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13M12 8C10 4 7 3 6.5 5S9 8 12 8zM12 8c2-4 5-5 5.5-3S15 8 12 8z"/>',
+  coins: '<ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v4c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 14v3c0 1.7 2.7 3 6 3s6-1.3 6-3v-4c0-1.6-2.5-2.9-5.6-3"/>',
+  scale: '<path d="M12 3v18M7 21h10M4 7h16"/><path d="M7 7l-3.5 7a3.5 3.5 0 0 0 7 0zM17 7l-3.5 7a3.5 3.5 0 0 0 7 0z"/>',
+  bank: '<path d="M3 10h18L12 4zM5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20.5h18"/>',
+  wallet: '<rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M16 13h2M3 9.5h14a3 3 0 0 0 3-3"/>',
+  arrowin: '<path d="M12 3v12M6.5 9.5 12 15l5.5-5.5M4 20h16"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  umbrella: '<path d="M3 12a9 9 0 0 1 18 0z"/><path d="M12 12v7a2 2 0 0 0 4 0"/>',
+  percent: '<path d="M19 5 5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
+  leaf: '<path d="M5 20c0-9 6-15 15-15 0 9-6 15-15 15z"/><path d="M5 20l9-9"/>',
+  tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
+  piggy: '<path d="M4.5 11.5A6.5 5.5 0 0 1 16 7.5l3-1-.6 3.2A5.5 5.5 0 0 1 20 12.5V15h-2l-1.2 3H14v-2H9.5v2h-3l-1-3A3.6 3.6 0 0 1 3 12z"/><path d="M15 11h.01"/>',
+  pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>',
+  off: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
+  dots: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  transfer: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+  card: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
+  baby: '<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>',
+  book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 19.5V21.5"/>'
+};
+const PALETTE = ['#E8912D', '#E4572E', '#D95B73', '#D963B5', '#9B4DCA', '#5B5BD6', '#3D7DD8', '#1F9BB8', '#138A8A', '#3E9D4F', '#A0673A', '#D9A400', '#7A8691'];
+const CAT_RULES = [
+  [/categoriser/, 'pen', '#8A94A0'], [/bungalow.*revenu/, 'sun', '#E8912D'], [/commission/, 'percent', '#7A8691'], [/bungalow/, 'umbrella', '#1F9BB8'],
+  [/vente.*frais/, 'tag', '#A0673A'], [/vente|occasion/, 'tag', '#3E9D4F'], [/aliment|courses|supermarch/, 'cart', '#E8912D'], [/restau/, 'fork', '#E8912D'],
+  [/logement|loyer|immobil/, 'house', '#3D7DD8'], [/energie|eau|electri|gaz/, 'bolt', '#D9A400'], [/voiture|transport|carbur|auto\b/, 'car', '#D95B73'],
+  [/assurance/, 'shield', '#5B5BD6'], [/sante|mutuelle|pharma|medec/, 'heart', '#D963B5'], [/telephone|internet|mobile/, 'wifi', '#1F9BB8'],
+  [/abonnement|streaming/, 'play', '#9B4DCA'], [/entretien|maison|bricol|travaux/, 'tool', '#A0673A'], [/hygiene|soin|coiff|beaute/, 'sparkle', '#D963B5'],
+  [/achat|vetement|shopping/, 'bag', '#E4572E'], [/loisir|sortie|sport|passion/, 'fun', '#9B4DCA'], [/vacance|voyage/, 'plane', '#1F9BB8'],
+  [/animau|veterin/, 'paw', '#A0673A'], [/cadeau|don\b|dons/, 'gift', '#D95B73'], [/credit|pret|emprunt/, 'coins', '#7A5AC8'], [/impot|taxe/, 'scale', '#138A8A'],
+  [/frais bancaire|banque|cotisation/, 'bank', '#3B4BA8'], [/pension|salaire|retraite/, 'wallet', '#3E9D4F'], [/rsa|allocation|caf|chomage|alimentaire|independant/, 'wallet', '#3E9D4F'], [/professionnel/, 'bag', '#5B5BD6'], [/location.*charges/, 'tool', '#A0673A'], [/location/, 'house', '#E8912D'], [/revenu|rembours|aide/, 'arrowin', '#3E9D4F'],
+  [/epargne|livret/, 'piggy', '#3E9D4F'], [/enfant|bebe|creche/, 'baby', '#E8912D'], [/ecole|etude|livre|culture/, 'book', '#5B5BD6'], [/plante|jardin/, 'leaf', '#3E9D4F'],
+  [/hors budget/, 'off', '#C0392B'], [/virement/, 'transfer', '#7A8691'], [/carte differee/, 'card', '#7A8691'], [/autre/, 'dots', '#7A8691']
+];
+function catLook(name) {
+  const c = catByName(name) || {}, n = norm(name || '');
+  const r = CAT_RULES.find(([re]) => re.test(n));
+  let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return { icon: CI[c.icon] ? c.icon : r ? r[1] : 'tag', color: c.color || (r ? r[2] : PALETTE[h % PALETTE.length]) };
+}
+const cico = (name, sm = false, look) => { const l = look || catLook(name); return `<span class="cico${sm ? ' sm' : ''}" style="--c:${l.color}">${I(CI[l.icon], sm ? 13 : 19, 2)}</span>`; };
+const txIcon = t => t.treatment === 'transfer' ? cico('', false, { icon: 'transfer', color: '#7A8691' }) : t.treatment === 'settlement' ? cico('', false, { icon: 'card', color: '#7A8691' }) : t.splits?.length > 1 ? cico('', false, { icon: 'dots', color: '#138A8A' }) : cico(t.category);
+const todoTx = () => state.transactions.filter(t => !isPlanned(t) && t.treatment !== 'transfer' && t.treatment !== 'settlement' && (t.category === TODO_CAT || t.splits?.some(l => l.category === TODO_CAT))).sort((a, b) => b.date.localeCompare(a.date));
+
+/* ---------- Sélecteur de catégorie (fenêtre à part, la saisie en cours reste ouverte) ---------- */
+function catPicker(o) {
+  const d = $('#catpick'), want = o.type === 'income' ? 'in' : 'out';
+  let q = '', open = o.cat && catByName(o.cat)?.subs?.length ? o.cat : '', both = false;
+  const cats = () => state.categories.filter(c => !c.hidden && c.name !== TODO_CAT && c.name !== OFF_CAT && !Object.values(SYSTEM).includes(c.name) && (both || c.kind === want || c.kind === 'both'));
+  const row = (c, s, label, sub) => `<button type="button" class="cp-row" data-cp="pick" data-c="${esc(c)}" data-s="${esc(s)}" aria-current="${o.cat === c && (o.sub || '') === s}">${label}</button>`;
+  const catRow = c => {
+    const l = catLook(c.name), subs = c.subs || [];
+    if (!subs.length) return row(c.name, '', `${cico(c.name)}<span class="grow">${esc(c.name)}</span>${o.cat === c.name ? I(IC.check, 18, 2.4) : ''}`);
+    const isOpen = open === c.name;
+    return `<button type="button" class="cp-row" data-cp="open" data-c="${esc(c.name)}" aria-expanded="${isOpen}" aria-current="${o.cat === c.name}">${cico(c.name)}<span class="grow">${esc(c.name)}${o.cat === c.name && o.sub ? `<span class="s">${esc(o.sub)}</span>` : ''}</span>${I(isOpen ? IC.down : IC.r, 18, 2)}</button>`
+      + (isOpen ? `<div class="cp-subs" style="--c:${l.color}">${row(c.name, '', '<span class="grow">Toute la catégorie</span>')}${subs.map(s => row(c.name, s, `<span class="grow">${esc(s)}</span>${o.cat === c.name && o.sub === s ? I(IC.check, 18, 2.4) : ''}`)).join('')}</div>` : '');
+  };
+  const draw = () => {
+    const nq = norm(q.trim()); let h = '';
+    if (nq) {
+      const hits = [];
+      for (const c of cats()) { if (norm(c.name).includes(nq)) hits.push([c.name, '']); for (const s of c.subs || []) if (norm(s).includes(nq)) hits.push([c.name, s]); }
+      h = hits.slice(0, 80).map(([c, s]) => row(c, s, `${cico(c)}<span class="grow">${esc(s || c)}${s ? `<span class="s">${esc(c)}</span>` : ''}</span>`)).join('') || '<p class="empty">Aucune catégorie trouvée.</p>';
+    } else {
+      const rec = []; const seen = new Set();
+      for (const t of [...state.transactions].sort((a, b) => b.date.localeCompare(a.date))) {
+        if (rec.length >= 5) break;
+        if (t.type !== o.type && !(o.type === 'expense' && t.type === 'expense') || t.treatment || [TODO_CAT, 'Autres'].includes(t.category) || !catByName(t.category) || catByName(t.category).hidden) continue;
+        const k = t.category + '|' + (t.subcategory || ''); if (!seen.has(k)) { seen.add(k); rec.push([t.category, t.subcategory || '']); }
+      }
+      if (rec.length) h += `<div class="cp-sec" style="padding-top:4px">Récentes</div>` + rec.map(([c, s]) => row(c, s, `${cico(c)}<span class="grow">${esc(s || c)}${s ? `<span class="s">${esc(c)}</span>` : ''}</span>${o.cat === c && (o.sub || '') === s ? I(IC.check, 18, 2.4) : ''}`)).join('');
+      h += `<div class="cp-sec">Spéciales</div>`;
+      if (o.todo !== false) h += row(TODO_CAT, '', `${cico(TODO_CAT)}<span class="grow">${TODO_CAT}<span class="s">À classer plus tard</span></span>`);
+      if (catByName(OFF_CAT)) h += catRow(catByName(OFF_CAT)).replace('</span>' + I(IC.r, 18, 2), '<span class="s">Compte sur le solde, pas dans le budget</span></span>' + I(IC.r, 18, 2));
+      for (const g of groupsList()) { const cs = cats().filter(c => groupOf(c.name) === g.id); if (cs.length) h += `<div class="cp-sec">${esc(g.name)}</div>` + cs.map(catRow).join(''); }
+      h += `<button type="button" class="cp-row" data-cp="both" style="color:var(--teal);font-weight:700;justify-content:center">${both ? 'Masquer' : 'Voir aussi'} les catégories de ${want === 'in' ? 'dépenses' : 'revenus'}</button>`;
+    }
+    d.querySelector('.cp-list').innerHTML = h;
+  };
+  d.innerHTML = `<div class="sheet-in"><div class="sheet-head"><h2>${o.title || 'Catégorie de l’opération'}</h2><button class="x" type="button" data-cp="close" aria-label="Fermer">${I(IC.x, 20, 2.2)}</button></div>${o.head || ''}
+    <label class="cp-search">${I(IC.search, 18)}<span class="visually-hidden">Rechercher une catégorie</span><input type="search" id="cpQ" placeholder="Rechercher (ex. pharmacie, essence…)" autocomplete="off"></label>
+    <div class="sheet-body cp-list"></div>${o.foot || ''}</div>`;
+  draw();
+  d.oninput = e => { if (e.target.id === 'cpQ') { q = e.target.value; draw(); } };
+  d.onclick = e => {
+    if (e.target === d) return d.close();
+    const b = e.target.closest('[data-cp]'); if (!b) return;
+    const k = b.dataset.cp;
+    if (k === 'close') return d.close();
+    if (k === 'both') { both = !both; return draw(); }
+    if (k === 'open') { open = open === b.dataset.c ? '' : b.dataset.c; draw(); b.scrollIntoView?.({ block: 'nearest' }); return; }
+    if (k === 'pick') { if (!o.onPick(b.dataset.c, b.dataset.s || '')) d.close(); return; }
+    o.acts?.[k]?.(b);
+  };
+  if (!d.open) d.showModal();
+  d.querySelector('.cp-list').scrollTop = 0;
+}
+
+/* ---------- Règles de classement ---------- */
+function rulesSheet() {
+  const rules = [...(state.rules || [])].sort((a, b) => a.match.localeCompare(b.match));
+  const body = `<p class="small" style="margin:0">Une règle classe automatiquement une opération dont le libellé contient le mot-clé, à l’import du relevé et à la saisie.</p>`
+    + (rules.length ? `<div class="card list" style="padding:0 14px">${rules.map(r => `<button type="button" class="row-item" data-act="rule-edit" data-id="${esc(r.id)}">${cico(r.category)}<span class="grow"><span class="t" style="display:block">« ${esc(r.match)} »${r.amount ? ' · ' + money(r.amount) : ''}</span><span class="s" style="display:block">→ ${esc(r.category)}${r.subcategory ? ' › ' + esc(r.subcategory) : ''}${r.type ? ' · ' + (r.type === 'income' ? 'revenus' : 'dépenses') : ''}</span></span>${ic('r', 18)}</button>`).join('')}</div>` : '<p class="empty">Aucune règle pour l’instant. Elles se créent en classant vos opérations (case « Toujours classer… »), ou ici.</p>')
+    + (todoTx().length ? `<button type="button" class="btn ghost full" data-act="rule-apply">Appliquer les règles aux ${todoTx().length} opération(s) à catégoriser</button>` : '');
+  openSheet('Règles de classement', body, `<button class="btn full" data-act="rule-new">${ic('plus', 18)} Nouvelle règle</button>`, {
+    'rule-edit': b => ruleForm(state.rules.find(r => r.id === b.dataset.id)),
+    'rule-new': () => ruleForm(null),
+    'rule-apply': () => { let n = 0; for (const t of todoTx()) { const r = ruleFor(t.label, t.type, t.amount); if (r && !t.splits?.length) { t.category = r.category; t.subcategory = r.subcategory || ''; n++; } } save(); render(); rulesSheet(); toast(n ? n + ' opération(s) classée(s)' : 'Aucune ne correspond à une règle'); }
+  });
+}
+function ruleForm(r) {
+  const R = r ? { ...r } : { match: '', category: '', subcategory: '', type: 'expense' };
+  const drawCat = () => { $('#ruleCat').innerHTML = R.category ? `${cico(R.category)}<span class="grow"><span class="t">${esc(R.category)}</span><span class="s">${esc(R.subcategory || 'Toute la catégorie')}</span></span><span class="link">Changer</span>` : `${cico(TODO_CAT)}<span class="grow"><span class="t">Choisir la catégorie</span></span>`; };
+  const count = () => { const m = ruleText(val('match')); const n = m ? state.transactions.filter(t => !t.treatment && ruleMatches(m, t.label)).length : 0; $('#ruleCount').textContent = m ? n + ' opération(s) déjà enregistrée(s) contiennent ce mot-clé.' : ''; };
+  openSheet(r ? 'Modifier la règle' : 'Nouvelle règle', `<label class="f">Le libellé contient<input name="match" value="${esc(R.match)}" placeholder="Ex. PHARMACIE, LECLERC, EDF" autocomplete="off" style="text-transform:uppercase"></label><p class="tiny" id="ruleCount" style="margin:-6px 0 0"></p>
+    <label class="f">Montant exact <span class="tiny" style="font-weight:500">· facultatif, utile pour un libellé comme « PRELEVEMENT SEPA »</span><input name="ramount" inputmode="decimal" value="${R.amount ? amountInput(R.amount) : ''}" placeholder="Tous les montants"></label>
+    <fieldset><legend>Pour</legend><div class="seg light">${[['expense', 'Dépenses'], ['income', 'Revenus'], ['', 'Les deux']].map(([v, l]) => `<button type="button" data-group="rtype" data-v="${v}" aria-pressed="${(R.type || '') === v}">${l}</button>`).join('')}</div></fieldset>
+    <fieldset><legend>Classer en</legend><button type="button" class="cp-field" id="ruleCat" data-act="rule-cat"></button></fieldset>
+    ${r ? '<label class="toggle"><input type="checkbox" name="reapply"> Reclasser aussi les opérations déjà enregistrées qui contiennent ce mot-clé</label>' : '<label class="toggle"><input type="checkbox" name="reapply" checked> Classer aussi les opérations « À catégoriser » qui contiennent ce mot-clé</label>'}`,
+    (r ? `<button class="btn danger" data-act="del" aria-label="Supprimer la règle">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">Enregistrer</button>`, {
+    'rule-cat': () => catPicker({ type: getPressed('rtype') || 'expense', cat: R.category, sub: R.subcategory, todo: false, onPick: (c, s) => { R.category = c; R.subcategory = s; drawCat(); } }),
+    save: () => { const m = ruleText(val('match')); if (!m) return alert('Indiquez un mot-clé.'); if (!R.category) return alert('Choisissez la catégorie.');
+      const typ = getPressed('rtype') || '', am = parseAmount(val('ramount')) || 0;
+      if (r) { const x = state.rules.find(y => y.id === r.id); Object.assign(x, { match: m.toUpperCase(), category: R.category, subcategory: R.subcategory || '', type: typ }); if (am) x.amount = am; else delete x.amount; }
+      else addRule(m, R.category, R.subcategory, typ, am);
+      let n = 0;
+      if (sf().elements.reapply.checked) for (const t of state.transactions) { if (t.treatment || t.splits?.length || (typ && t.type !== typ)) continue; if (!r && t.category !== TODO_CAT) continue; if (am && t.amount !== am) continue; if (ruleMatches(m, t.label)) { t.category = R.category; t.subcategory = R.subcategory || ''; n++; } }
+      save(); render(); rulesSheet(); toast('Règle enregistrée' + (n ? ' · ' + n + ' opération(s) reclassée(s)' : '')); },
+    del: () => { if (!confirm('Supprimer cette règle ? Les opérations déjà classées ne changent pas.')) return; state.rules = state.rules.filter(x => x.id !== r.id); save(); rulesSheet(); toast('Règle supprimée'); }
+  }, { back: 'rules-back' });
+  sheet.acts['rules-back'] = () => rulesSheet();
+  drawCat(); count(); sheet.inputs.match = count;
+}
+/* ---------- Regrouper en grandes catégories ---------- */
+function mergeSheet() {
+  const used = name => state.transactions.reduce((n, t) => n + parts(t).filter(p => p.category === name).length, 0);
+  const plan = MERGE_PLAN.map(([target, srcs]) => [target, srcs.filter(x => catByName(x) && x !== target)]).filter(([, s]) => s.length);
+  if (!plan.length) return openSheet('Regrouper', '<p class="empty">Vos catégories sont déjà regroupées.</p>', '<button class="btn full" data-act="close">OK</button>', {});
+  const body = `<p class="small" style="margin:0">Proposition : moins de catégories, plus faciles à parcourir. Les anciennes deviennent des <b>sous-catégories</b> : rien n’est perdu, vos opérations, échéances, règles et budgets suivent. Décochez ce que vous voulez garder tel quel.</p>`
+    + plan.map(([target, srcs], i) => `<label class="split-card" style="display:flex;flex-direction:row;gap:12px;align-items:center;cursor:pointer"><input type="checkbox" name="m${i}" checked style="margin-top:8px">${cico(target)}<span class="grow"><span class="b" style="display:block">${esc(target)}</span><span class="tiny">← ${srcs.map(x => esc(x) + ' (' + used(x) + ')').join(', ')}</span></span></label>`).join('')
+    + `<p class="tiny" style="margin:0">Vos autres catégories (dont les vôtres, ex. Impôts, Crédits, Bungalow…) ne changent pas. Le regroupement peut être annulé depuis la page Catégories.</p>`;
+  openSheet('Regrouper les catégories', body, `<button class="btn full" data-act="go">Regrouper</button>`, {
+    go: () => { const e = sf().elements, chosen = plan.filter((_, i) => e['m' + i].checked); if (!chosen.length) return closeSheet();
+      try { localStorage.setItem(KEY + '-before-merge', JSON.stringify(state)); } catch {}
+      let n = 0; for (const [t, s] of chosen) n += mergeCategories(t, s);
+      save(); closeSheet(); render(); toast(chosen.length + ' regroupement(s) · ' + n + ' élément(s) reclassé(s)'); }
+  });
+}
+
+/* Tri rapide des opérations « À catégoriser » (une par une, comme dans l'appli de la banque) */
+function triage(i = 0) {
+  const list = todoTx(), d = $('#catpick');
+  if (!list.length) { if (d.open) d.close(); render(); toast('Tout est classé ✓'); return; }
+  if (i >= list.length) { if (d.open) d.close(); render(); toast(list.length + ' opération' + (list.length > 1 ? 's' : '') + ' encore à classer'); return; }
+  const t = list[i], rp = ruleProposal(t.label, t.amount), key = labelKey(t.label) || (rp ? ruleText(t.label) : ''), similar = key ? list.filter(x => x !== t && x.type === t.type && (labelKey(x.label) ? labelKey(x.label) === key : (rp?.amount ? ruleText(x.label) === key && x.amount === t.amount : false))) : [];
+  const head = `<div class="cp-op"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><div style="min-width:0"><div class="b" style="font-size:17px">${esc(t.label)}</div><div class="small">${dateFR(t.date)} · ${esc(accName(t.account))}</div></div><div class="big ${t.type === 'income' ? 'pos' : 'neg'}">${t.type === 'income' ? '+' : '−'}${money(t.amount)}</div></div><div class="tiny" style="margin-top:4px">${i + 1} sur ${list.length} à classer${t.note ? ' · ' + esc(t.note) : ''}</div></div>`;
+  const foot = `<div class="sheet-foot" style="flex-direction:column;gap:8px">${rp ? `<label class="toggle" style="margin:0"><input type="checkbox" id="cpRule" checked> Toujours classer ainsi les ${esc(ruleProposalText(rp))} (règle)</label>` : ''}${similar.length ? `<label class="toggle" style="margin:0"><input type="checkbox" id="cpSame" checked> Classer pareil les ${similar.length} autre${similar.length > 1 ? 's' : ''} ${esc(ruleProposalText(rp || { match: key.toUpperCase() }))}</label>` : ''}<div style="display:flex;gap:10px"><button type="button" class="btn ghost" style="flex:1" data-cp="skip">Passer</button><button type="button" class="btn ghost" style="flex:1" data-cp="stop">Terminer</button></div></div>`;
+  catPicker({ type: t.type, title: 'Classer l’opération', head, foot, todo: false,
+    onPick: (c, s) => { const same = $('#cpSame')?.checked; if (rp && $('#cpRule')?.checked && c !== TODO_CAT && c !== OFF_CAT) addRule(rp.match, c, s, t.type, rp.amount); for (const x of [t, ...(same ? similar : [])]) { x.category = c; x.subcategory = s; if (x.splits) for (const l of x.splits) if (l.category === TODO_CAT) { l.category = c; l.subcategory = s; } } save(); render(); triage(i); return true; },
+    acts: { skip: () => triage(i + 1), stop: () => { d.close(); render(); } } });
+}
 /* Compte proposé dans les saisies : celui choisi en haut de l'écran, sinon le compte par défaut */
 const formAcc = () => { const a = ui.acc && accountById(ui.acc); return a && !a.archived ? a.id : defaultAccountId(); };
 
@@ -33,7 +210,7 @@ function txRow(t, showDate = false) {
   if (t.note && t.treatment !== 'transfer' && t.treatment !== 'settlement') bits.push(esc(t.note));
   if (showAccounts()) bits.push(esc(accName(t.account)));
   if (t.payment === 'deferred') bits.push('carte différée → ' + dateFR(t.dueDate).slice(0, 5));
-  return `<button class="row-item" data-act="edit-tx" data-id="${esc(t.id)}"><span class="grow"><span class="t" style="display:block">${esc(t.label)}</span><span class="s" style="display:block">${bits.join(' · ')}</span></span><span class="amt ${amtCls(t)}"${isPlanned(t) ? ' style="opacity:.5"' : ''}>${t.type === 'income' ? '+' : '−'}${money(t.amount)}</span></button>`;
+  return `<button class="row-item" data-act="edit-tx" data-id="${esc(t.id)}">${txIcon(t)}<span class="grow"><span class="t" style="display:block">${esc(t.label)}</span><span class="s" style="display:block">${bits.join(' · ')}</span></span><span class="amt ${amtCls(t)}"${isPlanned(t) ? ' style="opacity:.5"' : ''}>${t.type === 'income' ? '+' : '−'}${money(t.amount)}</span></button>`;
 }
 
 /* ---------- Rendu principal ---------- */
@@ -76,6 +253,7 @@ function homeMain(m, acc, g) {
   const cards = [...cardDues(m, acc), ...(m === cur ? cardDues(addMonths(m, 1), acc) : [])].filter(c => c.date >= today());
   const rows = [];
   for (const c of cards.slice(0, 2)) rows.push(`<button class="row-item" data-act="page" data-page="card"><span class="ico c">${ic('card', 18)}</span><span class="grow"><span class="t" style="display:block">Carte différée${showAccounts() ? ' · ' + esc(accName(c.account)) : ''}</span><span class="s" style="display:block">Débit automatique le ${dateFR(c.date).slice(0, 5)} · ${c.count} achat${c.count > 1 ? 's' : ''}</span></span><span class="amt neg">−${money(c.amount)}</span></button>`);
+  { const n = todoTx().filter(t => !acc || t.account === acc).length; if (n) rows.push(`<button class="row-item" data-act="triage">${cico(TODO_CAT)}<span class="grow"><span class="t" style="display:block">${n} opération${n > 1 ? 's' : ''} à catégoriser</span><span class="s" style="display:block">Touchez pour les classer une par une</span></span>${ic('r', 18)}</button>`); }
   if (due.length) rows.push(`<button class="row-item" data-act="tab" data-tab="due"><span class="ico w">${ic('clock', 18)}</span><span class="grow"><span class="t" style="display:block">${due.length} échéance${due.length > 1 ? 's' : ''} à confirmer</span><span class="s" style="display:block">Un appui sur ✓ quand c’est passé sur le compte</span></span>${ic('r', 18)}</button>`);
   if (m === cur) { const ni = nextIncome(acc); if (ni) { const f = forecastAt(prevDay(ni.date), acc); rows.push(`<button class="row-item" data-act="reste-info"><span class="ico g">${ic('clock', 18)}</span><span class="grow"><span class="t" style="display:block">Avant ${esc(ni.label)}</span><span class="s" style="display:block">Ce qui restera la veille du ${dateFR(ni.date).slice(0, 5)}</span></span><span class="amt ${f.total < 0 ? 'neg' : ''}">${money(f.total)}</span></button>`); } }
   if (m >= cur) { const f = forecast(m, acc); rows.push(`<button class="row-item" data-act="tab" data-tab="due"><span class="ico g">${ic('cal', 18)}</span><span class="grow"><span class="t" style="display:block">Fin ${m === cur ? 'du mois' : 'de ' + esc(MONTHS[Number(m.slice(5)) - 1])} prévue</span><span class="s" style="display:block">Avec les échéances et la carte différée</span></span><span class="amt">${money(f.total)}</span></button>`); }
@@ -118,12 +296,14 @@ function opsView() {
   if (ui.ops === 'expense') list = list.filter(t => t.type === 'expense' && t.treatment !== 'transfer');
   if (ui.ops === 'income') list = list.filter(t => t.type === 'income' && t.treatment !== 'transfer');
   if (ui.ops === 'planned') list = list.filter(isPlanned);
+  const todoSet = new Set(todoTx().map(t => t.id)); if (ui.ops === 'todo') list = list.filter(t => todoSet.has(t.id));
+  const nTodo = monthTx(ui.month, ui.acc).filter(t => todoSet.has(t.id)).length;
   const nPlanned = monthTx(ui.month, ui.acc).filter(isPlanned).length;
   const f = (k, l) => `<button class="pill s" data-act="ops-filter" data-f="${k}" aria-pressed="${ui.ops === k}">${l}</button>`;
   let h = `<div class="page-top"><div class="row"><h1>Opérations</h1><button class="x" data-act="export-csv" aria-label="Exporter en CSV">${ic('dl', 18)}</button></div>`;
   if (!q) h += `<div class="row">${monthNav()}${showAccounts() ? `<select data-change="acc" aria-label="Compte">${accOptions(ui.acc, true)}</select>` : ''}</div>`;
   h += `<label class="row" style="border:1px solid var(--field);border-radius:12px;padding:0 12px;height:46px;color:var(--muted)">${ic('search', 18)}<span class="visually-hidden">Rechercher</span><input id="q" data-input="q" value="${esc(ui.q)}" placeholder="Rechercher (libellé, catégorie, montant…)" style="flex:1;border:0;outline:none;font-size:16px;background:transparent;min-width:0" autocomplete="off">${ui.q ? `<button class="link" data-act="clear-q">Effacer</button>` : ''}</label>`;
-  h += `<div class="pills">${f('all', 'Toutes')}${f('expense', 'Dépenses')}${f('income', 'Revenus')}${f('planned', 'Prévues' + (nPlanned ? ' · ' + nPlanned : ''))}</div></div><main>`;
+  h += `<div class="pills">${f('all', 'Toutes')}${f('expense', 'Dépenses')}${f('income', 'Revenus')}${f('planned', 'Prévues' + (nPlanned ? ' · ' + nPlanned : ''))}${nTodo || ui.ops === 'todo' ? f('todo', 'À classer · ' + nTodo) : ''}</div>${nTodo ? `<button class="btn ghost full" data-act="triage" style="margin-top:8px">${cico(TODO_CAT, true)} Classer ${todoTx().length > 1 ? 'les ' + todoTx().length + ' opérations' : 'l’opération'} à catégoriser</button>` : ''}</div><main>`;
   if (q) h += `<p class="small" style="margin:0">${list.length} résultat${list.length > 1 ? 's' : ''} sur tous les mois</p>`;
   if (!list.length) return h + `<p class="empty">Aucune opération${q ? ' trouvée' : ' ce mois-ci'}.</p></main>`;
   const byDay = new Map(); for (const t of list) { const k = t.date; if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(t); }
@@ -232,17 +412,19 @@ const PAGES = {
   cats() {
     const groups = Object.fromEntries(groupsList().map(g => [g.id, g.name]));
     let h = subTop('Catégories') + '<main>';
+    h += `<button class="btn full" data-act="profile">${I(CI.baby, 18)} Adapter à mon profil (salaire, RSA, location…)</button><div class="grid2"><button class="btn ghost" data-act="rules">${I(CI.bolt, 18)} Règles (${(state.rules || []).length})</button><button class="btn ghost" data-act="merge">${I(CI.dots, 18)} Regrouper</button></div>`;
+    try { if (localStorage.getItem(KEY + '-before-merge')) h += `<button class="btn ghost full" data-act="merge-undo">Annuler le dernier regroupement</button>`; } catch {}
     h += `<p class="small" style="margin:0">Un <b>groupe</b> rassemble des catégories (ex. Vie courante, Bungalow, Ventes). Un groupe « suivi à part » a son propre onglet sur l’accueil et n’entre pas dans « Personnel ».</p><button class="btn ghost full" data-act="groups">Gérer les groupes (${groupsList().length})</button>`;
     for (const [g, l] of Object.entries(groups)) {
       const cs = state.categories.filter(c => (c.group === g || (g === 'perso' && !groups[c.group])) && !Object.values(SYSTEM).includes(c.name));
       if (!cs.length) { h += `<div class="sec">${esc(l)}</div><p class="tiny" style="margin:0 0 8px">Aucune catégorie : créez-en une avec ce groupe.</p>`; continue; }
-      h += `<div class="sec">${l}</div><section class="card list">${cs.map(c => `<button class="row-item" data-act="form" data-form="category" data-name="${esc(c.name)}"><span class="grow"><span class="t" style="display:block;${c.hidden ? 'color:var(--muted);text-decoration:line-through' : ''}">${esc(c.name)}</span><span class="s" style="display:block">${c.kind === 'in' ? 'Revenu' : 'Dépense'}${c.subs.length ? ' · ' + c.subs.length + ' sous-catégorie' + (c.subs.length > 1 ? 's' : '') : ''}${c.hidden ? ' · masquée' : ''}</span></span>${ic('r', 18)}</button>`).join('')}</section>`;
+      h += `<div class="sec">${l}</div><section class="card list">${cs.map(c => `<button class="row-item" data-act="form" data-form="category" data-name="${esc(c.name)}">${cico(c.name)}<span class="grow"><span class="t" style="display:block;${c.hidden ? 'color:var(--muted);text-decoration:line-through' : ''}">${esc(c.name)}</span><span class="s" style="display:block">${c.kind === 'in' ? 'Revenu' : 'Dépense'}${c.subs.length ? ' · ' + c.subs.length + ' sous-catégorie' + (c.subs.length > 1 ? 's' : '') : ''}${c.hidden ? ' · masquée' : ''}</span></span>${ic('r', 18)}</button>`).join('')}</section>`;
     }
     return h + `<button class="btn full" data-act="form" data-form="category">${ic('plus', 18)} Nouvelle catégorie</button><button class="btn ghost full" data-act="restore-preset">Rajouter les catégories proposées manquantes</button></main>`;
   },
   backup() {
     const v1 = readV1Local();
-    let h = subTop('Sauvegardes') + `<main><section class="card" id="drivePanel">${window.drivePanelHTML ? window.drivePanelHTML() : ''}</section>`;
+    let h = subTop('Sauvegardes') + `<main><section class="card" id="drivePanel">${window.drivePanelHTML ? window.drivePanelHTML() : '<p class="small" style="margin:0"><b>Version d’essai :</b> pas de sauvegarde Google Drive ici. Vos vraies données restent dans la v2 (et son Drive). Les essais faits ici ne vont pas dans la v2.</p>'}</section>`;
     h += `<section class="card" style="display:flex;flex-direction:column;gap:12px"><h2>Importer un relevé bancaire (CSV)</h2><p class="small" style="margin:0">Téléchargez le relevé au format CSV depuis l’espace client de votre banque. Colonnes « Montant », ou « Débit » et « Crédit », acceptées. Les doublons sont ignorés.</p><label class="f">Dans le compte<select id="impAcc">${accOptions(defaultAccountId())}</select></label><label class="btn dashed full" style="cursor:pointer">${ic('up', 18)} Choisir le fichier CSV<input type="file" accept=".csv,text/csv,text/plain" data-change="import-csv" class="visually-hidden"></label>`;
     if (state.imports.length) h += `<div class="small"><b>Imports récents</b>${state.imports.slice(0, 5).map(b => `<div class="head" style="padding:6px 0;border-top:1px solid var(--line)"><span>${esc(b.name)} · ${b.ids.length + (b.restore?.length || 0)} op. · ${esc(accName(b.account))}</span><button class="link" data-act="undo-import" data-id="${esc(b.id)}">Annuler</button></div>`).join('')}</div>`;
     h += `</section><section class="card list">`;
@@ -264,16 +446,28 @@ const PAGES = {
 };
 
 /* ---------- Bienvenue (première ouverture) ---------- */
+const profPills = sel => [['income', 'Vos revenus'], ['activity', 'Une activité à suivre à part ?'], ['home', 'Votre foyer']].map(([k, l]) => `<fieldset><legend>${l}</legend><div class="pills">${PROFILE_OPTS[k].map(([v, t]) => `<button type="button" class="pill" data-act="prof-t" data-k="${v}" aria-pressed="${sel.includes(v)}">${esc(t)}</button>`).join('')}</div></fieldset>`).join('');
+function profileSheet() {
+  const sel = [...(state.profile || [])];
+  openSheet('Adapter à mon profil', `<p class="small" style="margin:0">Cochez ce qui vous concerne : les catégories utiles sont <b>ajoutées</b> (rien n’est supprimé ni modifié).</p>${profPills(sel)}`, `<button class="btn full" data-act="go">Ajouter les catégories</button>`, {
+    'prof-t': b => { const k = b.dataset.k, i = sel.indexOf(k); if (i >= 0) sel.splice(i, 1); else sel.push(k); b.setAttribute('aria-pressed', String(i < 0)); },
+    go: () => { const n = applyProfile(sel, 'add'); save(); closeSheet(); render(); toast(n ? n + ' catégorie(s) ajoutée(s)' : 'Rien à ajouter : tout y est déjà'); }
+  });
+}
 function welcome() {
   const v1 = readV1Local();
+  if (ui.onboard === 'profile') {
+    ui.prof ||= ['salaire', 'voiture'];
+    return `<div class="welcome"><header class="top"><div class="steps" aria-label="Étape 1 sur 2"><span class="on"></span><span></span></div><h1 style="font-size:26px;margin-top:8px">Votre situation</h1><p style="margin:0;color:#dbeeed;font-size:14px">Pour ne vous proposer que les catégories utiles. Vous pourrez tout modifier ensuite.</p></header><main>${profPills(ui.prof)}<button class="btn full" data-act="onb-profile">Continuer</button></main></div>`;
+  }
   if (ui.onboard === 'accounts') {
     const list = state.accounts.map(a => `<div class="card row-item" style="border:0;padding:12px 14px"><span class="ico">${ic('bank', 18)}</span><span class="grow"><span class="t" style="display:block">${esc(a.name)}</span><span class="s" style="display:block">${esc(a.bank || '')} ${a.bank ? '·' : ''} ${({ courant: 'courant', epargne: 'épargne', especes: 'espèces' })[a.type]}${a.card === 'differee' ? ' · carte différée' : ''}</span></span><span class="amt">${a.opening == null ? '' : money(a.opening)}</span></div>`).join('');
     return `<div class="welcome"><header class="top"><div class="steps" aria-label="Étape 2 sur 2"><span class="on"></span><span class="on"></span></div><h1 style="font-size:26px;margin-top:8px">Quels sont vos comptes ?</h1><p style="margin:0;color:#dbeeed;font-size:14px">Ajoutez-les comme vous les voyez chez votre banque. Vous pourrez les modifier à tout moment.</p></header><main>${list}<section class="card" style="border:1.5px solid var(--teal)">${accountFields({}, true)}<button class="btn soft full" data-act="onb-add" style="margin-top:12px">Ajouter ce compte</button></section></main><div style="padding:14px 16px calc(20px + env(safe-area-inset-bottom));display:flex;gap:10px;max-width:760px;margin:0 auto;width:100%"><button class="btn full" data-act="onb-done" ${state.accounts.length ? '' : 'disabled style="opacity:.5"'}>Continuer${state.accounts.length ? ' · ' + state.accounts.length + ' compte' + (state.accounts.length > 1 ? 's' : '') : ''}</button></div></div>`;
   }
-  return `<div class="welcome"><header class="top"><h1 style="font-size:28px">Mon Budget v2</h1><p style="margin:0;color:#dbeeed;font-size:15px;line-height:1.5">La version simplifiée, à tester à côté de la version actuelle. Ses données sont séparées : rien de ce que vous faites ici ne modifie l’autre version.</p></header><main>
+  return `<div class="welcome"><header class="top"><h1 style="font-size:28px">Mon Budget</h1><p style="margin:0;color:#dbeeed;font-size:15px;line-height:1.5">Votre budget sur téléphone et ordinateur : comptes, échéances, carte différée, et classement automatique de vos dépenses.</p></header><main>
   ${v1 ? `<button class="card row-item" data-act="copy-v1" style="border:2px solid var(--teal)"><span class="ico">${ic('transfer', 20)}</span><span class="grow"><span class="t" style="display:block">Copier mes données actuelles</span><span class="s" style="display:block;white-space:normal">${v1.transactions.length} opérations trouvées sur cet appareil. Recommandé pour comparer avec vos vrais chiffres.</span></span>${ic('r', 18)}</button>` : ''}
   <button class="card row-item" data-act="drive-start"><span class="ico g">${ic('cloud', 20)}</span><span class="grow"><span class="t" style="display:block">Récupérer depuis Google Drive</span><span class="s" style="display:block;white-space:normal">Vos données v2${v1 ? '' : ', ou à défaut celles de la version actuelle'}, sauvegardées dans votre Drive.</span></span>${ic('r', 18)}</button>
-  <button class="card row-item" data-act="onb-start"><span class="ico w">${ic('plus', 20)}</span><span class="grow"><span class="t" style="display:block">Commencer avec un budget vide</span><span class="s" style="display:block;white-space:normal">Vous décrivez vos comptes, les catégories sont déjà prêtes.</span></span>${ic('r', 18)}</button>
+  <button class="card row-item" data-act="onb-start"><span class="ico w">${ic('plus', 20)}</span><span class="grow"><span class="t" style="display:block">Commencer avec un budget vide</span><span class="s" style="display:block;white-space:normal">Deux questions rapides : votre situation, puis vos comptes.</span></span>${ic('r', 18)}</button>
   ${state._loadError ? `<p class="alert c">Les données v2 de cet appareil n’ont pas pu être lues (${esc(state._loadError)}).</p>` : ''}</main></div>`;
 }
 
@@ -385,12 +579,16 @@ function txForm(type, opts = {}) {
   const payButtons = (accId, sel) => { const o = payOptsFor(accId); if (!o.some(p => p[0] === sel)) sel = sel === 'cardNow' ? 'card' : o[0][0]; return `<div class="opts" id="payBox" style="${o.length === 4 ? 'grid-template-columns:repeat(2,minmax(0,1fr))' : ''}">${o.map(([v, l]) => `<button type="button" class="opt" data-group="pay" data-v="${v}" aria-pressed="${v === sel}">${l}</button>`).join('')}</div>`; };
   const title = isEdit ? (t.treatment === 'transfer' ? 'Virement' : type === 'income' ? 'Revenu' : 'Dépense') : type === 'income' ? 'Nouveau revenu' : 'Nouvelle dépense';
   const srcSched = t?.recurringId ? state.schedules.find(x => x.id === t.recurringId) : null;
+  /* « C'est un virement entre mes comptes ? » : bien visible seulement si le libellé y ressemble ; sinon rangé dans « plus d'options » */
+  const looksXfer = isEdit && (/\b(vir|virt|virement|transfert|livret|epargne)\b/.test(norm(t.label)) || !!transferTarget(t.label, t.account) || [TODO_CAT, 'Autres'].includes(t.category));
+  const xferBox = visible => visible !== looksXfer ? '' : visible ? xferInner() : (xferInner() ? `<details><summary class="link" style="font-size:14px;cursor:pointer">⇄ C’est en fait un virement entre mes comptes ?</summary>${xferInner()}</details>` : '');
+  const xferInner = () => isEdit && t.treatment !== 'transfer' && t.treatment !== 'settlement' && !t.recurringId && activeAccounts().length > 1 ? `<div class="kvbox" style="padding:12px 14px;margin-top:4px"><div class="b" style="margin-bottom:6px">⇄ C’est un virement entre mes comptes ?</div><div style="display:flex;gap:8px"><select name="xferAcc" class="in" style="flex:1" aria-label="L’autre compte">${activeAccounts().filter(a => a.id !== t.account).map(a => `<option value="${esc(a.id)}">${type === 'income' ? 'Depuis ' : 'Vers '}${esc(a.name)}</option>`).join('')}</select><button type="button" class="btn ghost" style="flex:0 0 auto" data-act="to-transfer">Oui</button></div><div class="tiny" style="margin-top:6px">Elle ne comptera plus en ${type === 'income' ? 'revenu' : 'dépense'}, et l’autre compte sera mis à jour.</div></div>` : '';
   const showDraft = !isEdit && !opts.draft && txDraft && txDraft.type === type;
   const body = `${showDraft ? `<div class="alert w" style="align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:160px">Saisie non enregistrée${txDraft.label ? ' « ' + esc(txDraft.label) + ' »' : ''}${txDraft.amount ? ' · ' + esc(txDraft.amount) + ' €' : ''}${txDraft.buys?.length ? ' · ' + txDraft.buys.length + ' achats' : ''}</span><button type="button" class="btn small" data-act="draft-resume">Reprendre</button><button type="button" class="link" data-act="draft-drop">Effacer</button></div>` : ''}${srcSched ? `<div class="alert w" style="align-items:center"><span style="flex:1">Issue de l’échéance <b>« ${esc(srcSched.label)} »</b>${srcSched.note ? ' · ' + esc(srcSched.note) : ''} (${esc(daysLabel(srcSched))})</span><button type="button" class="btn sm ghost" data-act="open-sched">${ic('edit', 16)} Modifier l’échéance</button></div>` : ''}${isEdit ? '' : `<div class="seg light" role="group" aria-label="Type" style="margin:0 auto;width:240px"><button type="button" data-act="switch-type" data-v="expense" aria-pressed="${type === 'expense'}">Dépense</button><button type="button" data-act="switch-type" data-v="income" aria-pressed="${type === 'income'}">Revenu</button></div><div id="dictBox" style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn ghost" data-act="dict" id="dictBtn">${ic('mic', 18)} Dicter l’opération</button><div id="dictOut" class="tiny" style="text-align:center">${opts.dictText ? '« ' + esc(opts.dictText) + ' » · vérifiez puis enregistrez' : 'Ex. « 64 euros 30 Intermarché carte », « pension 2100 euros hier »'}</div></div>`}
   <label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant</span><input name="amount" class="amount-in ${type === 'income' ? 'inc' : ''}" inputmode="decimal" autocomplete="off" placeholder="0,00 €" value="${t ? amountInput(t.amount) : opts.amount ? amountInput(opts.amount) : ''}"></label>
   <label class="f">${type === 'income' ? 'De qui / quoi ?' : 'Où / quoi ?'}<input name="label" list="labelsList" autocomplete="off" value="${esc(t?.label || opts.label || '')}" placeholder="${type === 'income' ? 'Ex. Pension, remboursement…' : 'Ex. Intermarché, pharmacie…'}"><datalist id="labelsList">${recentLabels(type).map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
   <input type="hidden" name="category" value="${esc(cat)}"><input type="hidden" name="subcategory" value="${esc(t?.subcategory || opts.subcategory || '')}">
-  <fieldset><legend>Catégorie <span id="guessNote" class="tiny" style="font-weight:500;color:var(--pos)"></span></legend><div id="catBox"></div></fieldset>
+  <fieldset><legend>Catégorie <span id="guessNote" class="tiny" style="font-weight:500;color:var(--pos)"></span></legend><div id="catBox"></div><div id="ruleBox"></div></fieldset>
   <fieldset><legend>${type === 'income' ? 'Reçu par' : 'Payé avec'}</legend>${payButtons(acc, pay)}</fieldset>
   <div id="payInfo"></div>
   ${type === 'expense' ? `<label class="toggle" id="splitTog" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="split" ${t?.splits?.length || opts.split ? 'checked' : ''}> <span><b>Détailler le ticket</b> <span class="tiny">· un seul achat, plusieurs articles ou catégories (supermarché…)</span></span></label><div id="splitBox" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -402,17 +600,25 @@ function txForm(type, opts = {}) {
    <label class="toggle"><input type="checkbox" name="nextMonth" ${t?.budgetMonth && t.budgetMonth > t.date.slice(0, 7) ? 'checked' : ''}> Compter dans le budget du mois suivant</label>
    <label class="toggle"><input type="checkbox" name="planned" ${t && isPlanned(t) ? 'checked' : ''}> Prévue : pas encore passée sur le compte</label>
    ${isEdit ? '' : `<label class="toggle"><input type="checkbox" name="repeat"> Revient chaque mois : en faire une échéance</label>`}
-  </div></details>${isEdit && t.treatment !== 'transfer' && t.treatment !== 'settlement' && !t.recurringId && activeAccounts().length > 1 ? `<div class="kvbox" style="padding:12px 14px;margin-top:4px"><div class="b" style="margin-bottom:6px">⇄ C’est un virement entre mes comptes ?</div><div style="display:flex;gap:8px"><select name="xferAcc" class="in" style="flex:1" aria-label="L’autre compte">${activeAccounts().filter(a => a.id !== t.account).map(a => `<option value="${esc(a.id)}">${type === 'income' ? 'Depuis ' : 'Vers '}${esc(a.name)}</option>`).join('')}</select><button type="button" class="btn ghost" style="flex:0 0 auto" data-act="to-transfer">Oui</button></div><div class="tiny" style="margin-top:6px">Elle ne comptera plus en ${type === 'income' ? 'revenu' : 'dépense'}, et l’autre compte sera mis à jour.</div></div>` : ''}`;
+  ${xferBox(false)}</div></details>${xferBox(true)}`;
   const foot = (isEdit ? `<button class="btn danger" data-act="del" aria-label="Supprimer">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">${isEdit ? 'Enregistrer' : type === 'income' ? 'Enregistrer le revenu' : 'Enregistrer la dépense'}</button>`;
   const F = { dateTouched: isEdit, type, splits: t?.splits ? t.splits.map(l => ({ ...l })) : null, guessed: false, autoFirst: t?.splits?.length ? false : true };
-  const drawCats = () => {
-    const cur = val('category'); const guess = guessCategory(val('label'), type);
+  const drawCats = () => { setTimeout(drawRule, 0);
+    const cur = val('category'); const guess = guessCategory(val('label'), type, parseAmount(val('amount')) || 0);
     const chips = [...new Set([cur, guess?.category, ...topCategories(type, 4), ...(type === 'income' ? ['Pension', 'Salaire', 'Revenus divers', 'Bungalow · Revenus', 'Ventes diverses'] : ['Alimentation', 'Voiture & transport', 'Santé et mutuelle', 'Entretien de la maison', 'Loisirs et passions'])].filter(c => c && catByName(c) && !catByName(c).hidden))].slice(0, 6);
     const c = catByName(cur);
-    $('#catBox').innerHTML = `<div class="pills">${chips.map(n => `<button type="button" class="pill" data-act="pick-cat" data-v="${esc(n)}" aria-pressed="${n === cur}">${esc(n)}</button>`).join('')}<button type="button" class="pill more" data-act="all-cats">Autre…</button></div>
+    $('#catBox').innerHTML = `<button type="button" class="cp-field" data-act="cat-open">${cur ? cico(cur) + `<span class="grow"><span class="t">${esc(cur)}</span>${val('subcategory') ? `<span class="s">${esc(val('subcategory'))}</span>` : `<span class="s">Toute la catégorie</span>`}</span>` : cico(TODO_CAT) + '<span class="grow"><span class="t">Choisir une catégorie</span><span class="s">Toutes les catégories, avec recherche</span></span>'}<span class="link">${cur ? 'Changer' : 'Choisir'}</span></button>
+     <div class="pills" style="margin-top:10px">${chips.filter(n => n !== cur && n !== TODO_CAT && catByName(n)).slice(0, 4).map(n => `<button type="button" class="pill" data-act="pick-cat" data-v="${esc(n)}" aria-pressed="false">${cico(n, true)}${esc(n)}</button>`).join('')}</div>
      <select id="allCats" class="in" style="display:none;margin-top:8px" data-change="pick-cat-sel" aria-label="Toutes les catégories"><option value="">Choisir une catégorie…</option>${catOptions(cur, type)}</select>
      ${c?.subs?.length ? `<div class="pills" style="margin-top:10px">${c.subs.map(s => `<button type="button" class="pill s" data-act="pick-sub" data-v="${esc(s)}" aria-pressed="${s === val('subcategory')}">${esc(s)}</button>`).join('')}</div>` : ''}`;
   };
+  function drawRule() {
+    const box = $('#ruleBox'); if (!box) return;
+    const amt = parseAmount(val('amount')) || 0, rp = ruleProposal(val('label'), amt), k = rp && ruleProposalText(rp), c = val('category'), sc = val('subcategory'), r = rp ? ruleFor(val('label'), type, amt) : null;
+    if (!k || !c || c === OFF_CAT || c === TODO_CAT || (r && r.category === c && (r.subcategory || '') === sc)) { box.innerHTML = r ? `<p class="tiny" style="margin:6px 0 0">Règle : « ${esc(r.match)} » → ${esc(r.category)}${r.subcategory ? ' › ' + esc(r.subcategory) : ''}</p>` : ''; return; }
+    const was = sf().elements.mkrule?.checked;
+    box.innerHTML = `<label class="toggle" style="margin-top:6px"><input type="checkbox" name="mkrule" ${was ? 'checked' : ''}> <span>Toujours classer les <b>${esc(k)}</b> en ${esc(c)}${sc ? ' › ' + esc(sc) : ''}${r ? ' <span class="tiny">(remplace la règle actuelle)</span>' : ''}</span></label>`;
+  }
   const drawPay = () => {
     const a = accountById(val('account') || acc);
     if (type === 'expense' && $('#payBox').children.length !== payOptsFor(a?.id).length) $('#payBox').outerHTML = payButtons(a?.id, getPressed('pay'));
@@ -511,7 +717,8 @@ function txForm(type, opts = {}) {
     'open-sched': () => scheduleForm(srcSched),
     'switch-type': b => { const cur = { amount: parseAmount(val('amount')), label: val('label') }; txForm(b.dataset.v, { ...opts, amount: cur.amount || undefined, label: cur.label }); },
     'pick-cat': b => { sf().elements.category.value = b.dataset.v; sf().elements.subcategory.value = ''; $('#guessNote').textContent = ''; drawCats(); },
-    'all-cats': () => { const s = $('#allCats'); s.style.display = 'block'; s.focus(); },
+    'all-cats': () => acts['cat-open'](),
+    'cat-open': () => catPicker({ type, cat: val('category'), sub: val('subcategory'), onPick: (c, s) => { F.touchedCat = true; const e = sf().elements; e.category.value = c; e.subcategory.value = s; const gn = $('#guessNote'); if (gn) gn.textContent = ''; drawCats(); sf().dataset.dirty = '1'; } }),
     'pick-sub': b => { const cur = val('subcategory'); sf().elements.subcategory.value = cur === b.dataset.v ? '' : b.dataset.v; drawCats(); },
     qdate: b => { const x = new Date(); x.setDate(x.getDate() - Number(b.dataset.d)); const d = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); const e = sf().elements; e.date.value = d; const dv = sf().querySelector('[data-act="pick-date"][data-name="date"] .dv'); if (dv) dv.textContent = pickLabel(d, 'date'); e.date.dispatchEvent(new Event('change', { bubbles: true })); },
     'buy-tk': b => { readBuyDates(); const x = F.buys[Number(b.dataset.i)]; x.tkOn = !x.tkOn; if (x.tkOn && !x.tk) { x.tk = [{ category: x.category, amount: x.amount, label: '' }, { category: 'Entretien de la maison', amount: 0, label: '' }]; x.tkAuto = true; } drawBuys(); },
@@ -562,7 +769,7 @@ function txForm(type, opts = {}) {
     if (d.buysOn) { const dt = sf().querySelector('details.more'); if (dt) dt.open = true; }
     sf().dataset.dirty = '1'; }
   sheet.inputs = {
-    label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = '· devinée d’après « ' + val('label') + ' »'; drawCats(); } } },
+    label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type, parseAmount(val('amount')) || 0); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = g.rule ? '· règle automatique' : g.sameAmount ? '· même libellé et même montant qu’avant' : '· devinée d’après « ' + val('label') + ' »'; drawCats(); } else drawRule(); } else drawRule(); },
     amount: () => { if (F.buys) F.amtAuto = !(parseAmount(val('amount')) > 0); updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
     'split-lbl': el => { F.splits[Number(el.dataset.i)].label = el.value; },
     'buy-amt': el => { const i = Number(el.dataset.i), b = F.buys[i]; b.amount = parseAmount(el.value) || 0; updBuySum(); tkAutoFill(b, i); tkUpd(i); },
@@ -585,6 +792,9 @@ function txForm(type, opts = {}) {
   };
   sheet.afterPress = g => { if (g === 'pay') drawPay(); };
   const orig = acts['pick-cat']; acts['pick-cat'] = b => { F.touchedCat = true; orig(b); };
+  const origSave = acts.save; acts.save = () => { const e = sf().elements, mk = e.mkrule?.checked, lbl = e.label.value, c = e.category.value, sc = e.subcategory.value, n0 = saveCount;
+    const rp = ruleProposal(lbl, parseAmount(e.amount.value) || 0);
+    origSave(); if (mk && saveCount !== n0 && c && c !== TODO_CAT && rp) { addRule(rp.match, c, sc, type, rp.amount); save(); toast('Règle créée : ' + ruleProposalText(rp) + ' → ' + c); } };
   sheet.onClose = () => { try { F.rec?.abort(); } catch {} onClose(); };
   drawCats(); drawPay(); drawSplits(); drawBuys();
   if (opts.autoDict) acts.dict();
@@ -836,21 +1046,27 @@ function groupsSheet() {
 /* Catégorie */
 function categoryForm(name) {
   const c = name ? catByName(name) : { name: '', group: 'perso', kind: 'out', subs: [], hidden: false };
+  const look = catLook(name || ''); let pickIcon = look.icon, pickColor = look.color, lookTouched = false;
+  const lookHTML = () => `<div class="icgrid" id="icgrid">${Object.keys(CI).filter(k => !['transfer', 'card'].includes(k)).map(k => `<button type="button" class="icopt" data-act="ic-pick" data-k="${k}" aria-pressed="${k === pickIcon}" style="--c:${pickColor}" aria-label="Icône ${k}">${I(CI[k], 20)}</button>`).join('')}</div><div class="swatches">${PALETTE.map(col => `<button type="button" class="sw" data-act="col-pick" data-c="${col}" aria-pressed="${col === pickColor}" style="background:${col}" aria-label="Couleur ${col}"></button>`).join('')}</div>`;
   const used = name ? state.transactions.filter(t => parts(t).some(p => p.category === name)).length : 0;
   const body = `<label class="f">Nom<input name="name" value="${esc(c.name)}" autocomplete="off"></label>
   <div class="grid2"><label class="f">Groupe<select name="group">${groupsList().map(g => `<option value="${esc(g.id)}" ${groupOf(c.name || '') === g.id && (c.group === g.id || !groupById(c.group)) ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label><label class="f">Plutôt<select name="kind"><option value="out" ${c.kind !== 'in' ? 'selected' : ''}>Dépense</option><option value="in" ${c.kind === 'in' ? 'selected' : ''}>Revenu</option></select></label></div>
   <fieldset><legend>Sous-catégories</legend><div class="pills" id="subs">${c.subs.map((s, i) => `<span class="pill s" style="display:inline-flex;align-items:center;gap:4px">${esc(s)}<button type="button" class="link" data-act="sub-del" data-i="${i}" aria-label="Retirer ${esc(s)}" style="padding:0 2px">${ic('x', 14)}</button></span>`).join('') || '<span class="tiny">Aucune</span>'}</div><div style="display:flex;gap:8px;margin-top:10px"><input class="in" name="newsub" placeholder="Nouvelle sous-catégorie"><button type="button" class="btn sm" data-act="sub-add">Ajouter</button></div></fieldset>
+  <fieldset><legend>Icône et couleur</legend><div id="lookBox">${lookHTML()}</div></fieldset>
   ${name ? `<label class="toggle"><input type="checkbox" name="hidden" ${c.hidden ? 'checked' : ''}> Masquer (n’est plus proposée ; l’historique reste)</label><p class="tiny" style="margin:0">${used} opération${used > 1 ? 's' : ''} dans cette catégorie. Un nouveau nom est appliqué à toutes.</p>` : ''}`;
   const subs = [...c.subs];
   const draw = () => { $('#subs').innerHTML = subs.map((s, i) => `<span class="pill s" style="display:inline-flex;align-items:center;gap:4px">${esc(s)}<button type="button" class="link" data-act="sub-del" data-i="${i}" aria-label="Retirer ${esc(s)}" style="padding:0 2px">${ic('x', 14)}</button></span>`).join('') || '<span class="tiny">Aucune</span>'; };
   openSheet(name ? 'Catégorie' : 'Nouvelle catégorie', body, (name && !used ? `<button class="btn danger" data-act="del" aria-label="Supprimer">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">Enregistrer</button>`, {
     'sub-add': () => { const v = val('newsub').trim(); if (v && !subs.some(s => norm(s) === norm(v))) subs.push(v); sf().elements.newsub.value = ''; draw(); },
     'sub-del': b => { subs.splice(Number(b.dataset.i), 1); draw(); },
+    'ic-pick': b => { pickIcon = b.dataset.k; lookTouched = true; $('#lookBox').innerHTML = lookHTML(); },
+    'col-pick': b => { pickColor = b.dataset.c; lookTouched = true; $('#lookBox').innerHTML = lookHTML(); },
     save: () => {
       const nn = val('name').trim(); if (!nn) return alert('Donnez un nom.');
       if (nn !== name && state.categories.some(x => norm(x.name) === norm(nn))) return alert('Cette catégorie existe déjà.');
-      if (name && nn !== name) { for (const t of state.transactions) { if (t.category === name) t.category = nn; for (const l of t.splits || []) if (l.category === name) l.category = nn; } for (const s of state.schedules) if (s.category === name) s.category = nn; if (state.budgets[name] != null) { state.budgets[nn] = state.budgets[name]; delete state.budgets[name]; } }
+      if (name && nn !== name) { for (const r of state.rules || []) if (r.category === name) r.category = nn; for (const t of state.transactions) { if (t.category === name) t.category = nn; for (const l of t.splits || []) if (l.category === name) l.category = nn; } for (const s of state.schedules) if (s.category === name) s.category = nn; if (state.budgets[name] != null) { state.budgets[nn] = state.budgets[name]; delete state.budgets[name]; } }
       const n = { name: nn, group: val('group'), kind: val('kind'), subs, hidden: !!sf().elements.hidden?.checked };
+      if (lookTouched) { n.icon = pickIcon; n.color = pickColor; }
       if (name) Object.assign(c, n); else state.categories.push(n);
       save(); closeSheet(); render(); toast('Catégorie enregistrée');
     },
@@ -896,6 +1112,14 @@ function act(name, b) {
     case 'month': ui.month = addMonths(ui.month, Number(b.dataset.d)); render(); break;
     case 'year': ui.year += Number(b.dataset.d); render(); break;
     case 'groups': groupsSheet(); break;
+    case 'triage': triage(0); break;
+    case 'rules': rulesSheet(); break;
+    case 'merge': mergeSheet(); break;
+    case 'merge-undo': { let raw = null; try { raw = localStorage.getItem(KEY + '-before-merge'); } catch {} if (!raw || !confirm('Revenir aux catégories d’avant le regroupement ?\nLes opérations saisies depuis seront aussi annulées.')) break;
+      state = validate(JSON.parse(raw)); try { localStorage.removeItem(KEY + '-before-merge'); } catch {} save(); render(); toast('Regroupement annulé'); break; }
+    case 'trial-reload': { const raw = localStorage.getItem(V2KEY); if (!raw) { alert('Aucune donnée v2 sur cet appareil.'); break; }
+      if (!confirm('Remplacer les données de cette version d’essai par une nouvelle copie de vos données v2 ?\nLa v2 n’est pas modifiée.')) break;
+      state = validate(JSON.parse(raw)); save({ noHistory: true }); render(); toast('Données recopiées depuis la v2'); break; }
     case 'group': ui.group = b.dataset.g; try { localStorage.setItem('mb2-ui-group', ui.group); } catch {} render(); break;
     case 'bilan-group': ui.bilanGroup = b.dataset.g; render(); break;
     case 'ops-filter': ui.ops = b.dataset.f; render(); break;
@@ -938,7 +1162,10 @@ function act(name, b) {
     }
     case 'restore-preset': { let n = 0; for (const p of presetCategories()) { const c = catByName(p.name); if (!c) { state.categories.push(p); n++; } else { for (const s of p.subs) if (!c.subs.includes(s)) { c.subs.push(s); n++; } if (c.hidden) { c.hidden = false; n++; } } } save(); render(); toast(n ? n + ' éléments rajoutés' : 'Rien ne manquait'); break; }
     case 'reset': if (confirm('Effacer toutes les données v2 de cet appareil ?\nLa version actuelle n’est pas touchée. Les données v2 restent dans Google Drive si la sauvegarde était activée.') && confirm('Vraiment tout effacer ?')) { state = blank(); try { localStorage.removeItem(KEY); localStorage.removeItem('mon-budget-v2-sync'); } catch {} ui.tab = 'home'; ui.page = null; render(); } break;
-    case 'onb-start': ui.onboard = 'accounts'; render(); scrollTo(0, 0); break;
+    case 'onb-start': ui.onboard = 'profile'; render(); scrollTo(0, 0); break;
+    case 'prof-t': { const k = b.dataset.k, s = ui.prof ||= []; const i = s.indexOf(k); if (i >= 0) s.splice(i, 1); else s.push(k); b.setAttribute('aria-pressed', String(i < 0)); break; }
+    case 'onb-profile': applyProfile(ui.prof || [], 'replace'); ui.onboard = 'accounts'; render(); scrollTo(0, 0); break;
+    case 'profile': profileSheet(); break;
     case 'onb-add': {
       const w = document.querySelector('.welcome'); const q = n => w.querySelector(`[name=${n}]`)?.value; const gp = g => w.querySelector(`[data-group="${g}"][aria-pressed="true"]`)?.dataset.v;
       try { const a = makeAccount({ name: q('name'), bank: q('bank'), type: gp('atype'), card: gp('acard'), debitDay: q('debitDay'), opening: q('opening'), start: q('start'), match: q('match') }); state.accounts.push(a); if (!state.settings.defaultAccount) state.settings.defaultAccount = a.id; save({ silent: true }); render(); toast('Compte « ' + a.name + ' » ajouté'); } catch (e) { alert(e.message); }
