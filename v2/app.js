@@ -135,10 +135,30 @@ const guessGroup = n => /^bungalow/i.test(n) ? 'bungalow' : /^ventes?/i.test(n) 
 /* ---------- État ---------- */
 const blank = () => ({ v: 2, groups: DEFAULT_GROUPS(), accounts: [], transactions: [], schedules: [], categories: presetCategories(), budgets: {}, imports: [], settings: { bungalowRates: { Airbnb: 15, Booking: 17 } }, createdAt: today() });
 let state;
+/* Réparation : un « virement » dont les deux côtés sont sur le même compte (ou dont un côté manque) redevient une opération normale */
+function repairTransfers(s) {
+  const by = new Map();
+  for (const t of s.transactions || []) if (t.transferId) { if (!by.has(t.transferId)) by.set(t.transferId, []); by.get(t.transferId).push(t); }
+  const drop = new Set(); let n = 0;
+  for (const legs of by.values()) {
+    const accs = new Set(legs.map(t => t.account));
+    if (legs.length === 2 && accs.size === 2) continue;
+    // garde le côté dépense (débit réel du compte), retire l'autre côté
+    const keep = legs.find(t => t.type === 'expense') || legs[0];
+    for (const t of legs) if (t !== keep && accs.size === 1) drop.add(t.id);
+    delete keep.transferId; delete keep.treatment;
+    keep.category = TODO_CAT; keep.subcategory = ''; keep.payment = keep.payment === 'transfer' ? 'card' : keep.payment;
+    keep.note = 'Corrigé : virement vers le même compte annulé';
+    n++;
+  }
+  if (drop.size) s.transactions = s.transactions.filter(t => !drop.has(t.id));
+  if (n) s._repaired = n;
+}
 function validate(s) {
   if (!s || typeof s !== 'object' || s.v !== 2) throw Error('Ce fichier n’est pas une sauvegarde de Mon Budget v2.');
   for (const k of ['accounts', 'transactions', 'schedules', 'categories', 'imports']) { s[k] ||= []; if (!Array.isArray(s[k])) throw Error('Sauvegarde invalide (' + k + ').'); }
   if (!Array.isArray(s.groups) || !s.groups.length) s.groups = DEFAULT_GROUPS();
+  repairTransfers(s);
   if (Array.isArray(s.categories) && !s.categories.some(c => c.name === TODO_CAT)) s.categories.unshift({ name: TODO_CAT, group: 'perso', kind: 'out', subs: [], hidden: false });
   if (Array.isArray(s.categories) && !s.categories.some(c => c.name === OFF_CAT)) s.categories.push({ name: OFF_CAT, group: 'perso', kind: 'both', subs: ['Avance / prêt à un proche', 'Remboursement d’un proche', 'Achat pour quelqu’un', 'Correction'], hidden: false });
   if (!Array.isArray(s.rules)) s.rules = [];

@@ -96,7 +96,7 @@ function catPicker(o) {
       const rec = []; const seen = new Set();
       for (const t of [...state.transactions].sort((a, b) => b.date.localeCompare(a.date))) {
         if (rec.length >= 5) break;
-        if (t.type !== o.type && !(o.type === 'expense' && t.type === 'expense') || t.treatment || [TODO_CAT, 'Autres'].includes(t.category) || !catByName(t.category) || catByName(t.category).hidden) continue;
+        if (t.type !== o.type && !(o.type === 'expense' && t.type === 'expense') || t.treatment || [TODO_CAT, 'Autres', ...Object.values(SYSTEM)].includes(t.category) || !catByName(t.category) || catByName(t.category).hidden) continue;
         const k = t.category + '|' + (t.subcategory || ''); if (!seen.has(k)) { seen.add(k); rec.push([t.category, t.subcategory || '']); }
       }
       if (rec.length) h += `<div class="cp-sec" style="padding-top:4px">Récentes</div>` + rec.map(([c, s]) => row(c, s, `${cico(c)}<span class="grow">${esc(s || c)}${s ? `<span class="s">${esc(c)}</span>` : ''}</span>${o.cat === c && (o.sub || '') === s ? I(IC.check, 18, 2.4) : ''}`)).join('');
@@ -608,7 +608,7 @@ function txForm(type, opts = {}) {
     const chips = [...new Set([cur, guess?.category, ...topCategories(type, 4), ...(type === 'income' ? ['Pension', 'Salaire', 'Revenus divers', 'Bungalow · Revenus', 'Ventes diverses'] : ['Alimentation', 'Voiture & transport', 'Santé et mutuelle', 'Entretien de la maison', 'Loisirs et passions'])].filter(c => c && catByName(c) && !catByName(c).hidden))].slice(0, 6);
     const c = catByName(cur);
     $('#catBox').innerHTML = `<button type="button" class="cp-field" data-act="cat-open">${cur ? cico(cur) + `<span class="grow"><span class="t">${esc(cur)}</span>${val('subcategory') ? `<span class="s">${esc(val('subcategory'))}</span>` : `<span class="s">Toute la catégorie</span>`}</span>` : cico(TODO_CAT) + '<span class="grow"><span class="t">Choisir une catégorie</span><span class="s">Toutes les catégories, avec recherche</span></span>'}<span class="link">${cur ? 'Changer' : 'Choisir'}</span></button>
-     <div class="pills" style="margin-top:10px">${chips.filter(n => n !== cur && n !== TODO_CAT && catByName(n)).slice(0, 4).map(n => `<button type="button" class="pill" data-act="pick-cat" data-v="${esc(n)}" aria-pressed="false">${cico(n, true)}${esc(n)}</button>`).join('')}</div>
+     <div class="pills" style="margin-top:10px">${chips.filter(n => n !== cur && n !== TODO_CAT && !Object.values(SYSTEM).includes(n) && catByName(n)).slice(0, 4).map(n => `<button type="button" class="pill" data-act="pick-cat" data-v="${esc(n)}" aria-pressed="false">${cico(n, true)}${esc(n)}</button>`).join('')}</div>
      <select id="allCats" class="in" style="display:none;margin-top:8px" data-change="pick-cat-sel" aria-label="Toutes les catégories"><option value="">Choisir une catégorie…</option>${catOptions(cur, type)}</select>
      ${c?.subs?.length ? `<div class="pills" style="margin-top:10px">${c.subs.map(s => `<button type="button" class="pill s" data-act="pick-sub" data-v="${esc(s)}" aria-pressed="${s === val('subcategory')}">${esc(s)}</button>`).join('')}</div>` : ''}`;
   };
@@ -740,7 +740,7 @@ function txForm(type, opts = {}) {
         if (t) for (const k of ['recurringId', 'recurringDate', 'importId', 'groupId', 'treatment', 'transferId', 'chequeNumber', 'bankLabel']) if (t[k]) f[k] = t[k];
         if (t?.payment === 'deferred' && f.payment === 'card' && t.account === f.account && t.date === f.date) f.dueDate = t.dueDate;
         const n = buildTx(f);
-        if (t?.transferId) { for (const o of state.transactions.filter(x => x.transferId === t.transferId && x.id !== t.id)) { o.amount = n.amount; o.date = n.date; o.label = n.label; } }
+        if (t?.transferId) { const others = state.transactions.filter(x => x.transferId === t.transferId && x.id !== t.id); if (others.some(o => o.account === n.account)) throw Error('Les deux côtés d’un virement doivent être sur deux comptes différents.'); for (const o of others) { o.amount = n.amount; o.date = n.date; o.label = n.label; } }
         upsertTx(n);
         if (e.repeat?.checked) state.schedules.push({ id: uid(), label: n.label, amount: n.amount, type: n.type, account: n.account, category: n.category, subcategory: n.subcategory || '', payment: n.payment === 'deferred' ? 'card' : n.payment, day: Number(n.date.slice(8)), every: 1, start: addMonths(n.date.slice(0, 7), 1), end: '', nextMonthBudget: !!n.budgetMonth, skip: [] });
         const c = catByName(n.category); if (n.subcategory && c && !c.subs.includes(n.subcategory)) c.subs.push(n.subcategory);
@@ -1202,3 +1202,4 @@ document.addEventListener('change', e => {
 });
 onSavedHook = () => window.driveOnSaved?.();
 render();
+if (state._repaired) { const n = state._repaired; delete state._repaired; save(); setTimeout(() => toast(n + ' virement(s) incorrect(s) corrigé(s) : à reclasser dans « À catégoriser »'), 600); }
