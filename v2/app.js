@@ -321,10 +321,13 @@ function addRule(match, category, subcategory, type, amount) {
 /* Libellé générique (PRELEVEMENT SEPA, CARTE, VIREMENT…) : il ne dit pas qui est payé, seul le montant permet de reconnaître l'opération */
 const isGeneric = l => !!ruleText(l) && !labelKey(l);
 /* Proposition de règle pour un libellé : mot-clé, et montant exact si le libellé est générique */
-const ruleProposal = (label, amount) => labelKey(label) ? { match: labelKey(label).toUpperCase(), amount: 0 } : isGeneric(label) && amount ? { match: ruleText(label).toUpperCase(), amount } : null;
+const ruleProposal = (label, amount) => labelKey(label) ? { match: ruleWords(label).toUpperCase(), amount: 0 } : isGeneric(label) && amount ? { match: ruleText(label).toUpperCase(), amount } : null;
 const ruleProposalText = p => '« ' + p.match + ' »' + (p.amount ? ' de ' + money(p.amount) : '');
 /* Mot-clé proposé pour une règle : le libellé sans les mots bancaires (PRLV, CB, VIR…), 2 mots au plus */
-const ruleKey = l => labelKey(l).toUpperCase();
+/* « Réservation M. Martin » → règle sur « RESERVATION » : on coupe avant Monsieur / Madame / M. … (le nom change à chaque fois) */
+const beforeCivility = l => String(l || '').replace(/(^|[\s.,;:-])(monsieur|madame|mademoiselle|mr|mme|mlle|m)\b.*$/i, '').trim();
+const ruleWords = l => labelKey(beforeCivility(l)) || labelKey(l);
+const ruleKey = l => ruleWords(l).toUpperCase();
 /* ---------- Regroupement en grandes catégories ---------- */
 const MERGE_PLAN = [
   ['Logement & énergie', ['Logement', 'Énergie et eau', 'Entretien de la maison']],
