@@ -722,6 +722,45 @@ const SPOKEN_HINTS = [
 ];
 const MONTH_WORDS = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
 const shiftDate = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
+/* Échéance dictée : « EDF 85 euros le 5 de chaque mois », « salaire 2100 euros le 28 »,
+   « virement 150 euros vers le livret le 30 », « crédit 49,13 le 10 pendant 12 mois », « assurance 300 euros par an le 15 » */
+function parseScheduleSpoken(text) {
+  let raw = ' ' + String(text || '').trim() + ' ';
+  const r = { text: String(text || '').trim() };
+  const n0 = norm(raw);
+  // fréquence
+  if (/trimestr|tous les (3|trois) mois/.test(n0)) r.every = 3;
+  else if (/\b(par an|chaque annee|tous les ans|annuel|annuelle|une fois par an)\b/.test(n0)) r.every = 12;
+  else if (/\b(chaque mois|tous les mois|par mois|mensuel|mensuelle)\b/.test(n0)) r.every = 1;
+  raw = raw.replace(/\b(de )?(chaque|tous les|toutes les|par|une fois par) ?(mois|trimestre|ann[ée]e|ans?|3 mois|trois mois)\b|\b(trimestriel|annuel|mensuel)(le)?s?\b/gi, ' ');
+  // nombre de fois : « pendant 12 mois », « 10 fois », « 4 mensualités »
+  const c = raw.match(/\b(?:pendant )?(\d{1,3}) ?(fois|mensualit[ée]s|[ée]ch[ée]ances|mois)\b/i);
+  if (c) { r.count = Number(c[1]); raw = raw.replace(c[0], ' '); }
+  // jours : « le 5 », « le 1er et le 28 », « les 1 et 15 »
+  const d = raw.match(/\s(?:le|les) (1er|premier|\d{1,2}(?![\d.,]))((?:\s*(?:,|et)\s*(?:le )?(?:1er|premier|\d{1,2}(?![\d.,])))*)(?!\s*(?:€|euros?))/i);
+  if (d) {
+    const days = (d[1] + ' ' + d[2]).match(/\d{1,2}|1er|premier/gi).map(x => /^(1er|premier)$/i.test(x) ? 1 : Number(x)).filter(x => x >= 1 && x <= 31);
+    if (days.length) { r.days = [...new Set(days)].sort((a, b) => a - b); raw = raw.replace(d[0], ' '); }
+  }
+  // virement vers un de mes comptes
+  const n1 = ' ' + norm(raw).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ') + ' ';
+  const toAcc = activeAccounts().find(a => accountKeywords(a).some(k => n1.includes(' ' + k + ' ')) || n1.includes(' ' + norm(a.name) + ' '));
+  if (/\b(virement|epargne|mettre de cote)\b/.test(n1) && toAcc) { r.type = 'transfer'; r.toAccount = toAcc.id; }
+  const p = parseSpoken(raw.replace(/\s+/g, ' ').trim(), 'expense');
+  if (p.amount) r.amount = p.amount;
+  if (r.type !== 'transfer') { if (p.type) r.type = p.type; if (p.category) { r.category = p.category; r.subcategory = p.subcategory || ''; } }
+  let label = p.label || '';
+  if (r.type === 'transfer') { label = label.split(' ').filter(w => !accountKeywords(toAcc).some(k => k.split(' ').includes(norm(w))) && !/^(virement|vers|sur|le|la|mon|ma)$/i.test(norm(w))).join(' '); if (!label) label = 'Épargne'; }
+  if (label) r.label = label.replace(/^./, x => x.toUpperCase());
+  if (!r.category && r.type !== 'transfer' && label) { // « crédit » → Crédits, « loyer » → Logement › Loyer… (nom de catégorie d'abord, puis sous-catégorie)
+    const w = norm(label).split(' ').filter(x => x.length >= 4), hit = t => norm(t).split(/\W+/).some(z => z.length >= 4 && w.some(y => z.startsWith(y) || y.startsWith(z)));
+    const cats = state.categories.filter(c => !c.hidden && c.name !== TODO_CAT && !Object.values(SYSTEM).includes(c.name));
+    const c1 = cats.find(c => hit(c.name));
+    if (c1) { r.category = c1.name; r.subcategory = (c1.subs || []).find(hit) || ''; }
+    else for (const c of cats) { const sub = (c.subs || []).find(hit); if (sub) { r.category = c.name; r.subcategory = sub; break; } }
+  }
+  return r;
+}
 function parseSpoken(text, type) {
   const raw = String(text || '').trim(); let s = ' ' + norm(raw).replace(/€/g, ' euros ').replace(/\s+/g, ' ') + ' ';
   const r = { text: raw };

@@ -474,6 +474,20 @@ function welcome() {
 
 /* ---------- Calendrier (dates, mois, jours du mois) ---------- */
 const WD = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+/* Dictée vocale réutilisable (micro du navigateur, sinon champ texte + micro du clavier) */
+function listen(o) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const fallback = msg => { const box = $(o.box); if (!box) return; const k = o.field; box.innerHTML = `<label class="f">Votre phrase<span class="tiny" style="font-weight:500">${msg || 'Touchez le champ puis le micro 🎤 du clavier, et dites par exemple « ' + esc(o.example) + ' ».'}</span><span style="display:flex;gap:8px"><input name="${k}" class="in" placeholder="${esc(o.example)}" autocomplete="off" style="flex:1"><button type="button" class="btn" data-act="${o.fill}">OK</button></span></label>`; sf().elements[k]?.focus(); };
+  if (!SR || window.mbNoSpeech) return fallback();
+  if (listen.rec) { listen.rec.stop(); return; }
+  let rec; try { rec = new SR(); } catch { window.mbNoSpeech = true; return fallback(); }
+  listen.rec = rec; rec.lang = 'fr-FR'; rec.interimResults = true; rec.maxAlternatives = 1; let final = '';
+  const btn = $(o.btn); btn.innerHTML = ic('mic', 18) + ' J’écoute… parlez (touchez pour arrêter)'; btn.style.background = 'var(--coral-l)'; btn.style.borderColor = 'var(--coral)';
+  rec.onresult = ev => { let txt = ''; for (const res of ev.results) { txt += res[0].transcript; if (res.isFinal) final = txt; } const out = $(o.out); if (out) out.textContent = '« ' + txt + ' »'; };
+  rec.onerror = ev => { if (['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported'].includes(ev.error)) { window.mbNoSpeech = true; listen.rec = null; fallback(ev.error === 'not-allowed' ? 'Le micro est refusé pour ce site. Utilisez le micro 🎤 du clavier dans ce champ :' : 'La dictée directe n’est pas disponible ici. Utilisez le micro 🎤 du clavier dans ce champ :'); } };
+  rec.onend = () => { listen.rec = null; const b = $(o.btn); if (b) { b.innerHTML = ic('mic', 18) + ' ' + o.idle; b.style.background = ''; b.style.borderColor = ''; } if (final.trim()) o.onText(final.trim()); };
+  try { rec.start(); } catch { listen.rec = null; window.mbNoSpeech = true; fallback(); }
+}
 function pickLabel(v, mode, optional, short) {
   if (!v) return optional ? (mode === 'month' ? 'Sans fin' : 'Aucune') : 'Choisir…';
   if (short && mode === 'date') return dateFR(v);
@@ -879,6 +893,7 @@ function scheduleForm(s) {
   s = s || { label: '', amount: 0, type: 'expense', account: acc, toAccount: '', category: '', subcategory: '', payment: 'directDebit', days: [Number(today().slice(8))], every: 1, start: thisMonth(), end: '', nextMonthBudget: false };
   const otherAcc = activeAccounts().find(a => a.id !== s.account)?.id || '';
   const body = `<div class="seg light" role="group" aria-label="Type">${[['expense', 'Dépense'], ['income', 'Revenu'], ['transfer', 'Virement']].map(([v, l]) => `<button type="button" data-group="stype" data-v="${v}" aria-pressed="${s.type === v}">${l}</button>`).join('')}</div>
+  ${isEdit ? '' : `<button type="button" class="btn ghost full" id="sdictBtn" data-act="sdict">${ic('mic', 18)} Dicter l’échéance</button><p class="tiny" id="sdictOut" style="text-align:center;margin:-4px 0 0">Ex. « EDF 85 euros le 5 », « salaire 2100 euros le 28 », « virement 150 euros vers le livret le 30 », « crédit 49,13 le 10 pendant 12 mois »</p><div id="sdictBox"></div>`}
   ${isEdit ? '' : `<fieldset><legend>Choisir un modèle <span class="tiny" style="font-weight:500">· ou écrire le vôtre</span></legend><div class="pills">${TEMPLATES.map(x => `<button type="button" class="pill s" data-act="tpl" data-v="${esc(x[0])}" aria-pressed="false">${x[1] === 'income' ? '+ ' : x[1] === 'transfer' ? '⇄ ' : ''}${esc(x[0])}</button>`).join('')}</div></fieldset>`}
   <label class="f">Nom<input name="label" value="${esc(s.label)}" placeholder="Ex. EDF, crédit voiture, 4X CB Amazon…" autocomplete="off"></label>
   <label class="f">Achat / détail <span class="tiny" style="font-weight:500">· facultatif</span><input name="detail" value="${esc(s.note || '')}" placeholder="Ex. encre imprimante, chapeau…" autocomplete="off" maxlength="120"></label>
@@ -912,6 +927,21 @@ function scheduleForm(s) {
     $('#schedSum').innerHTML = ty === 'transfer' ? `<span>Virement automatique de <b>${esc(accName(e.account.value))}</b> vers <b>${esc(accName(e.toAccount.value))}</b>, ${esc(d)} ${per}. Ne compte pas dans le budget.</span>`
       : `<span>${ty === 'income' ? 'Revenu' : 'Dépense'} · <b>${esc(val('category'))}${val('subcategory') ? ' / ' + esc(val('subcategory')) : ''}</b> · ${esc(accName(e.accountNT.value))} · ${payLabel(val('payment')).toLowerCase()} · ${esc(d)} ${per}${e.nextMonth.checked ? ' · budget du mois suivant' : ''}</span>`;
   };
+  const applySDict = text => {
+    const r = parseScheduleSpoken(text), e = sf().elements;
+    if (r.type) pressed('stype', r.type);
+    const ty = getPressed('stype');
+    if (r.label) e.label.value = r.label;
+    if (r.amount) e.amount.value = amountInput(r.amount);
+    if (r.days?.length) { e.days.value = r.days.join(','); const dv = sf().querySelector('[data-act="pick-date"][data-name="days"] .dv'); if (dv) dv.textContent = pickLabel(e.days.value, 'days'); }
+    if (r.every) pressed('every', String(r.every));
+    if (r.count > 1 && validMonth(e.start.value)) { e.end.value = addMonths(e.start.value, (r.count - 1) * (Number(getPressed('every')) || 1)); const dv = sf().querySelector('[data-act="pick-date"][data-name="end"] .dv'); if (dv) dv.textContent = pickLabel(e.end.value, 'month', true); }
+    if (ty === 'transfer') { if (r.toAccount) e.toAccount.value = r.toAccount; if (e.toAccount.value === e.account.value) e.account.value = activeAccounts().find(a => a.id !== e.toAccount.value)?.id || e.account.value; }
+    else { const cat = r.category || e.category.value; e.category.innerHTML = catOptions(cat, ty); if (r.category) { e.category.value = r.category; s.subcategory = r.subcategory || ''; } drawSubs(); if (ty === 'income') e.payment.value = 'transfer'; }
+    drawType(); drawMode(); drawSum();
+    const miss = [!r.amount && 'le montant', !r.days?.length && 'le jour (« le 5 »)'].filter(Boolean);
+    $('#sdictOut').innerHTML = '« ' + esc(text) + ' »<br>' + (miss.length ? '<b class="neg">Il manque ' + miss.join(' et ') + '.</b>' : 'Vérifiez le résumé en bas, puis touchez Enregistrer.');
+  };
   const foot = (isEdit ? `<button class="btn danger" data-act="del" aria-label="Supprimer l’échéance">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">${isEdit ? 'Enregistrer' : 'Enregistrer l’échéance'}</button>`;
   openSheet(isEdit ? 'Modifier l’échéance' : 'Nouvelle échéance', body, foot, {
     tpl: b => {
@@ -920,6 +950,8 @@ function scheduleForm(s) {
       if (x[1] !== 'transfer') { e.category.innerHTML = catOptions(x[2], x[1]); e.category.value = x[2]; s.subcategory = x[3]; drawSubs(); e.payment.value = x[1] === 'income' ? 'transfer' : 'directDebit'; e.nextMonth.checked = x[0] === 'Pension'; }
       drawType(); drawSum(); e.amount.focus();
     },
+    sdict: () => listen({ btn: '#sdictBtn', out: '#sdictOut', box: '#sdictBox', field: 'sdictText', fill: 'sdict-fill', idle: 'Dicter l’échéance', example: 'EDF 85 euros le 5', onText: applySDict }),
+    'sdict-fill': () => { const v = val('sdictText').trim(); if (v) applySDict(v); },
     'cus-add': () => { const last = C.filter(x => x.date).map(x => x.date).sort().pop(); C.push({ date: last ? clampDay(addMonths(last.slice(0, 7), 1), Number(last.slice(8))) : '', amount: parseAmount(val('amount')) || 0 }); drawCustom(); drawSum(); },
     'cus-del': b => { C.splice(Number(b.dataset.i), 1); drawCustom(); drawSum(); },
     save: () => {
