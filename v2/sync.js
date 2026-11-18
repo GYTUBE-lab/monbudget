@@ -71,7 +71,8 @@ async function upload(fileId) {
 const trivial = s => !s?.transactions?.length && !s?.schedules?.length;
 function applyRemote(data, f) {
   state = validate(data); ui.onboard = null;
-  save({ silent: true });
+  save({ silent: true, fromDrive: true });
+  try { localStorage.setItem(KEY + '-savedAt', String(new Date(f.modifiedTime).getTime() || Date.now())); } catch { }
   setMeta({ fileId: f.id, version: String(f.version), dirty: false, lastSync: Date.now(), lastError: '' });
   render();
 }
@@ -111,7 +112,12 @@ async function sync() {
       else if (JSON.stringify(remote) === JSON.stringify(state)) setMeta({ fileId: f.id, version: String(f.version), dirty: false, lastSync: Date.now(), lastError: '' });
       else {
         status = 'Deux versions : choix à faire'; updateChip();
-        const c = await chooseSheet('Deux versions différentes', `<p style="margin:0">Les données de cet appareil et celles de Google Drive ne sont pas identiques.</p><div class="card" style="background:var(--bg)"><b>Google Drive</b> : ${remote.transactions?.length || 0} opérations · modifié le ${esc(new Date(f.modifiedTime).toLocaleString('fr-FR'))}<br><b>Cet appareil</b> : ${state.transactions.length} opérations</div><p class="tiny" style="margin:0">La version écartée reste dans l’historique automatique (Sauvegardes) et dans l’historique des versions du fichier Drive.</p>`, [['drive', 'Utiliser les données de Google Drive', ''], ['local', 'Garder cet appareil et remplacer Drive'], ['later', 'Décider plus tard']]);
+        let localAt = 0; try { localAt = Number(localStorage.getItem(KEY + '-savedAt')) || 0; } catch { }
+        const driveAt = new Date(f.modifiedTime).getTime(), localNewer = localAt > driveAt, fmt = t => new Date(t).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+        const tag = '<span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:var(--teal);color:#fff;font-size:12px;font-weight:700">plus récent</span>';
+        const c = await chooseSheet('Deux versions différentes', `<p style="margin:0">Cet appareil et Google Drive n’ont pas les mêmes données (par exemple après une saisie sur un autre appareil ou sans connexion).</p><div class="card" style="background:var(--bg);line-height:1.7"><b>Cet appareil</b> : ${state.transactions.length} opérations${localAt ? ' · modifié le ' + esc(fmt(localAt)) : ''}${localAt && localNewer ? tag : ''}<br><b>Google Drive</b> : ${remote.transactions?.length || 0} opérations · modifié le ${esc(fmt(driveAt))}${!localAt || !localNewer ? tag : ''}</div><p class="tiny" style="margin:0">Choisissez en général la version la plus récente. L’autre reste récupérable : historique automatique (Plus › Sauvegardes) et historique des versions du fichier Drive.</p>`,
+          localNewer ? [['local', 'Mettre à jour Google Drive avec cet appareil', 'primary'], ['drive', 'Reprendre les données de Google Drive'], ['later', 'Décider plus tard']]
+                     : [['drive', 'Reprendre les données de Google Drive', 'primary'], ['local', 'Mettre à jour Google Drive avec cet appareil'], ['later', 'Décider plus tard']]);
         status = '';
         if (c === 'drive') { applyRemote(remote, f); toast('Données de Google Drive utilisées'); }
         else if (c === 'local') { sent(await upload(f.id)); toast('Google Drive mis à jour avec cet appareil'); }

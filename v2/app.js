@@ -194,6 +194,7 @@ function save(opts = {}) {
     const prev = localStorage.getItem(KEY);
     if (prev && !opts.noHistory) { const h = JSON.parse(localStorage.getItem(KEY + '-history') || '[]'); h.unshift({ at: new Date().toISOString(), data: prev }); localStorage.setItem(KEY + '-history', JSON.stringify(h.slice(0, 5))); }
     localStorage.setItem(KEY, JSON.stringify(state));
+    if (!opts.fromDrive) localStorage.setItem(KEY + '-savedAt', String(Date.now()));
   } catch { alert('Enregistrement impossible sur cet appareil (mémoire pleine ou navigation privée). Faites une sauvegarde depuis Plus › Sauvegardes.'); }
   if (onSavedHook && !opts.silent) onSavedHook();
 }
