@@ -217,8 +217,9 @@ function txRow(t, showDate = false) {
 /* ---------- Rendu principal ---------- */
 function render() {
   const app = $('#app');
-  if (!state.accounts.length || ui.onboard) { $('#tabs').hidden = true; app.innerHTML = welcome(); return; }
+  if (!state.accounts.length || ui.onboard) { document.body.classList.remove('t-due'); $('#tabs').hidden = true; app.innerHTML = welcome(); return; }
   $('#tabs').hidden = false; renderTabs();
+  document.body.classList.toggle('t-due', ui.tab === 'due');
   let h = '';
   if (ui.tab === 'home') h = home();
   else if (ui.tab === 'ops') h = opsView();
@@ -239,7 +240,7 @@ function home() {
   const m = ui.month, acc = ui.acc, g = ui.group;
   const views = [['all', 'Tout'], ...(tabGroups().length ? [['perso', 'Personnel'], ...tabGroups().map(x => [x.id, x.name])] : [])];
   const seg = views.length > 1 ? views.map(([k, l]) => `<button data-act="group" data-g="${esc(k)}" aria-pressed="${g === k}">${esc(l)}</button>`).join('') : '';
-  let h = `<header class="top"><div class="top-row"><h1>Mon Budget</h1>${syncChip()}</div><div class="ctrls">${monthNav()}${showAccounts() ? `<label class="visually-hidden" for="accSel">Compte</label><select id="accSel" data-change="acc">${accOptions(acc, true)}</select>` : ''}</div>${seg ? `<div class="seg" role="group" aria-label="Vue">${seg}</div>` : ''}</header><main class="lift">`;
+  let h = `<header class="top"><div class="top-row"><h1 class="brand"><img src="../icons/colibri.png" alt="" width="58" height="38">Mon Budget</h1>${syncChip()}</div><div class="ctrls">${monthNav()}${showAccounts() ? `<label class="visually-hidden" for="accSel">Compte</label><select id="accSel" data-change="acc">${accOptions(acc, true)}</select>` : ''}</div>${seg ? `<div class="seg" role="group" aria-label="Vue">${seg}</div>` : ''}</header><main class="lift">`;
   h += g === 'bungalow' ? homeBungalow(m, acc) : homeMain(m, acc, g);
   return h + '</main>';
 }
@@ -465,7 +466,7 @@ function welcome() {
     const list = state.accounts.map(a => `<div class="card row-item" style="border:0;padding:12px 14px"><span class="ico">${ic('bank', 18)}</span><span class="grow"><span class="t" style="display:block">${esc(a.name)}</span><span class="s" style="display:block">${esc(a.bank || '')} ${a.bank ? '·' : ''} ${({ courant: 'courant', epargne: 'épargne', especes: 'espèces' })[a.type]}${a.card === 'differee' ? ' · carte différée' : ''}</span></span><span class="amt">${a.opening == null ? '' : money(a.opening)}</span></div>`).join('');
     return `<div class="welcome"><header class="top"><div class="steps" aria-label="Étape 2 sur 2"><span class="on"></span><span class="on"></span></div><h1 style="font-size:26px;margin-top:8px">Quels sont vos comptes ?</h1><p style="margin:0;color:#dbeeed;font-size:14px">Ajoutez-les comme vous les voyez chez votre banque. Vous pourrez les modifier à tout moment.</p></header><main>${list}<section class="card" style="border:1.5px solid var(--teal)">${accountFields({}, true)}<button class="btn soft full" data-act="onb-add" style="margin-top:12px">Ajouter ce compte</button></section></main><div style="padding:14px 16px calc(20px + env(safe-area-inset-bottom));display:flex;gap:10px;max-width:760px;margin:0 auto;width:100%"><button class="btn full" data-act="onb-done" ${state.accounts.length ? '' : 'disabled style="opacity:.5"'}>Continuer${state.accounts.length ? ' · ' + state.accounts.length + ' compte' + (state.accounts.length > 1 ? 's' : '') : ''}</button></div></div>`;
   }
-  return `<div class="welcome"><header class="top"><h1 style="font-size:28px">${esc(ED.name)}</h1><p style="margin:0;color:#dbeeed;font-size:15px;line-height:1.5">Votre budget sur téléphone et ordinateur : comptes, échéances, carte différée, et classement automatique de vos dépenses.</p></header><main>
+  return `<div class="welcome"><header class="top"><img class="hero-bird" src="../icons/colibri-branche.png" alt="Colibri sur une branche fleurie" width="300" height="231"><h1 style="font-size:30px;text-align:center">${esc(ED.name)}</h1><p style="margin:0;color:#dbeeed;font-size:15px;line-height:1.5">Votre budget sur téléphone et ordinateur : comptes, échéances, carte différée, et classement automatique de vos dépenses.</p></header><main>
   ${v1 ? `<button class="card row-item" data-act="copy-v1" style="border:2px solid var(--teal)"><span class="ico">${ic('transfer', 20)}</span><span class="grow"><span class="t" style="display:block">Copier mes données actuelles</span><span class="s" style="display:block;white-space:normal">${v1.transactions.length} opérations trouvées sur cet appareil. Recommandé pour comparer avec vos vrais chiffres.</span></span>${ic('r', 18)}</button>` : ''}
   <button class="card row-item" data-act="drive-start"><span class="ico g">${ic('cloud', 20)}</span><span class="grow"><span class="t" style="display:block">Récupérer depuis Google Drive</span><span class="s" style="display:block;white-space:normal">Vos données sauvegardées dans votre Google Drive.</span></span>${ic('r', 18)}</button>
   <button class="card row-item" data-act="onb-start"><span class="ico w">${ic('plus', 20)}</span><span class="grow"><span class="t" style="display:block">Commencer avec un budget vide</span><span class="s" style="display:block;white-space:normal">Deux questions rapides : votre situation, puis vos comptes.</span></span>${ic('r', 18)}</button>

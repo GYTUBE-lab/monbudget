@@ -212,6 +212,24 @@ table.t td{border-top:1px solid var(--line);padding:9px 0;text-align:right}
 .swatches{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .sw{width:32px;height:32px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px var(--field);cursor:pointer}
 .sw[aria-pressed=true]{box-shadow:0 0 0 2px var(--ink)}
+.top{background:radial-gradient(circle at 88% 0%,rgba(127,224,195,.45) 0%,rgba(127,224,195,0) 45%),linear-gradient(145deg,#083a42 0%,#0e5b66 45%,#13897f 100%)}
+.brand{display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0}
+.brand img{width:50px;height:auto;margin:-10px 0 -8px -4px;flex:0 0 auto}
+.top-row .chip{flex:0 1 auto;min-width:0;max-width:44%}
+.hero-bird{display:block;width:min(300px,78vw);height:auto;margin:4px auto 0}
+.welcome .top>p{text-align:center}
+/* Onglet Échéances : dégradé violet, fond noir, fenêtres blanches */
+html:has(body.t-due),body.t-due{background:#0e0c14}
+body.t-due .top{--teal-d:rgba(0,0,0,.32);background:radial-gradient(circle at 90% 0%,rgba(255,122,182,.45) 0%,rgba(255,122,182,0) 40%),linear-gradient(140deg,#24178a 0%,#4b2fd6 55%,#8e44e8 100%)}
+body.t-due .sec{color:#c9b8ff}
+body.t-due .empty{color:#d9d2ff}
+body.t-due .day{background:linear-gradient(140deg,#24178a,#8e44e8);color:#fff;border-radius:12px;padding:5px 0;line-height:1.1}
+body.t-due .day b{color:#fff}
+body.t-due .btn.dashed{background:#fff;border-color:#8e44e8}
+body.t-due nav.tabs{background:#000;box-shadow:none;border-top:1px solid #26222f}
+body.t-due nav.tabs button{color:#b9b3c6}
+body.t-due nav.tabs button[aria-current=page]{color:#fff}
+body.t-due nav.tabs .plus{background:linear-gradient(140deg,#4b2fd6,#8e44e8);border-color:#000;box-shadow:0 6px 14px rgba(142,68,232,.45)}
 </style>
 </head>
 <body>

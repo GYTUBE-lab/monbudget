@@ -2,7 +2,7 @@
    Montants en centimes (entiers). Données séparées de la version actuelle. */
 'use strict';
 /* Édition : nom, stockage et fichier Drive propres (défini dans edition.js) */
-const ED = Object.assign({ name: 'Mon Budget v2', key: 'mon-budget-v2', drive: 'data-v2', file: 'Mon Budget v2 - données.json', token: 'mon-budget-gtoken', v1: true }, window.EDITION || {});
+const ED = Object.assign({ name: 'Mon Budget', key: 'mon-budget-v2', drive: 'data-v2', file: 'Mon Budget v2 - données.json', token: 'mon-budget-gtoken', v1: true }, window.EDITION || {});
 const KEY = ED.key, V1KEY = 'mon-budget-v1', V2KEY = KEY;
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
