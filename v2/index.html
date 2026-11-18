@@ -230,11 +230,34 @@ body.t-due nav.tabs{background:#000;box-shadow:none;border-top:1px solid #26222f
 body.t-due nav.tabs button{color:#b9b3c6}
 body.t-due nav.tabs button[aria-current=page]{color:#fff}
 body.t-due nav.tabs .plus{background:linear-gradient(140deg,#4b2fd6,#8e44e8);border-color:#000;box-shadow:0 6px 14px rgba(142,68,232,.45)}
+#printArea{display:none}
+@media print{
+  @page{margin:14mm}
+  html,body{background:#fff!important}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important;color:#000;font:11pt/1.35 'DM Sans',Arial,sans-serif}
+  .pr-head{display:flex;align-items:center;gap:12px;border-bottom:2px solid #0e5b66;padding-bottom:8px;margin-bottom:6px}
+  .pr-head h1{font:700 18pt Outfit,Arial,sans-serif;margin:0}
+  .pr-sub{color:#444;font-size:10pt}
+  #printArea h2{font:700 13pt Outfit,Arial,sans-serif;margin:16px 0 6px;color:#0e5b66;break-after:avoid}
+  .pr-t{width:100%;border-collapse:collapse;margin-bottom:8px}
+  .pr-t th,.pr-t td{padding:4px 6px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}
+  .pr-t th{font-size:9.5pt;color:#444;border-bottom:1.5px solid #888}
+  .pr-t .n{text-align:right;white-space:nowrap}
+  .pr-t tr.b td{font-weight:700}
+  .pr-t tr.sub td{padding-left:18px;color:#333;font-size:10pt}
+  .pr-t tr.tot td{border-top:1.5px solid #888}
+  .pr-t .pc{color:#555;width:52px}
+  .pr-ops td{font-size:10pt}
+  .pr-note{font-size:9pt;color:#555}
+  tr{break-inside:avoid}
+}
 </style>
 </head>
 <body>
 <div id="app" class="app"><div class="loading">Chargement…</div></div>
 <nav class="tabs" id="tabs" aria-label="Navigation principale" hidden></nav>
+<div id="printArea"></div>
 <dialog class="sheet" id="sheet"></dialog>
 <dialog class="sheet" id="catpick" aria-label="Catégorie"></dialog>
 <dialog class="picker" id="picker" aria-label="Calendrier"></dialog>

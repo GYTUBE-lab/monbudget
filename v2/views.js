@@ -2,6 +2,7 @@
 'use strict';
 const I = (d, s = 22, w = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC = {
+  print: '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
   home: '<path d="M3 10.5 12 4l9 6.5V20H3z"/>', list: '<path d="M8 7h13M8 12h13M8 17h13M3.5 7h.01M3.5 12h.01M3.5 17h.01"/>', plus: '<path d="M12 5v14M5 12h14"/>',
   cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', dots: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
   l: '<path d="m15 18-6-6 6-6"/>', r: '<path d="m9 18 6-6-6-6"/>', down: '<path d="m6 9 6 6 6-6"/>', check: '<path d="m5 12 5 5 9-10"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>',
@@ -302,7 +303,7 @@ function opsView() {
   const nTodo = monthTx(ui.month, ui.acc).filter(t => todoSet.has(t.id)).length;
   const nPlanned = monthTx(ui.month, ui.acc).filter(isPlanned).length;
   const f = (k, l) => `<button class="pill s" data-act="ops-filter" data-f="${k}" aria-pressed="${ui.ops === k}">${l}</button>`;
-  let h = `<div class="page-top"><div class="row"><h1>Opérations</h1><button class="x" data-act="export-csv" aria-label="Exporter en CSV">${ic('dl', 18)}</button></div>`;
+  let h = `<div class="page-top"><div class="row"><h1>Opérations</h1><button class="x" data-act="print" aria-label="Imprimer ou enregistrer en PDF">${ic('print', 18)}</button><button class="x" data-act="export-csv" aria-label="Exporter en CSV">${ic('dl', 18)}</button></div>`;
   if (!q) h += `<div class="row">${monthNav()}${showAccounts() ? `<select data-change="acc" aria-label="Compte">${accOptions(ui.acc, true)}</select>` : ''}</div>`;
   h += `<label class="row" style="border:1px solid var(--field);border-radius:12px;padding:0 12px;height:46px;color:var(--muted)">${ic('search', 18)}<span class="visually-hidden">Rechercher</span><input id="q" data-input="q" value="${esc(ui.q)}" placeholder="Rechercher (libellé, catégorie, montant…)" style="flex:1;border:0;outline:none;font-size:16px;background:transparent;min-width:0" autocomplete="off">${ui.q ? `<button class="link" data-act="clear-q">Effacer</button>` : ''}</label>`;
   h += `<div class="pills">${f('all', 'Toutes')}${f('expense', 'Dépenses')}${f('income', 'Revenus')}${f('planned', 'Prévues' + (nPlanned ? ' · ' + nPlanned : ''))}${nTodo || ui.ops === 'todo' ? f('todo', 'À classer · ' + nTodo) : ''}</div>${nTodo ? `<button class="btn ghost full" data-act="triage" style="margin-top:8px">${cico(TODO_CAT, true)} Classer ${todoTx().length > 1 ? 'les ' + todoTx().length + ' opérations' : 'l’opération'} à catégoriser</button>` : ''}</div><main>`;
@@ -432,6 +433,7 @@ const PAGES = {
     h += `</section><section class="card list">`;
     h += `<button class="row-item" data-act="export-json"><span class="ico">${ic('dl', 20)}</span><span class="grow"><span class="t" style="display:block">Télécharger une sauvegarde</span><span class="s" style="display:block">Fichier JSON complet, à garder en lieu sûr</span></span></button>`;
     h += `<label class="row-item" style="cursor:pointer"><span class="ico">${ic('up', 20)}</span><span class="grow"><span class="t" style="display:block">Restaurer une sauvegarde</span><span class="s" style="display:block">Sauvegarde v2, ou sauvegarde de la version actuelle</span></span><input type="file" accept=".json,application/json" data-change="restore-json" class="visually-hidden"></label>`;
+    h += `<button class="row-item" data-act="print"><span class="ico">${ic('print', 20)}</span><span class="grow"><span class="t" style="display:block">Imprimer / PDF</span><span class="s" style="display:block">Relevé du mois ou bilan de l’année, sur papier ou en PDF</span></span></button>`;
     h += `<button class="row-item" data-act="export-csv"><span class="ico">${ic('dl', 20)}</span><span class="grow"><span class="t" style="display:block">Exporter les opérations (CSV)</span><span class="s" style="display:block">Pour un tableur</span></span></button>`;
     if (v1) h += `<button class="row-item" data-act="copy-v1"><span class="ico w">${ic('transfer', 20)}</span><span class="grow"><span class="t" style="display:block">Recopier les données de la version actuelle</span><span class="s" style="display:block">${v1.transactions.length} opérations sur cet appareil · remplace les données actuelles</span></span></button>`;
     h += `<button class="row-item" data-act="history"><span class="ico">${ic('clock', 20)}</span><span class="grow"><span class="t" style="display:block">Historique automatique</span><span class="s" style="display:block">Revenir à un des 5 derniers états</span></span></button></section>`;
@@ -1072,6 +1074,69 @@ function budgetSheet(cat) {
     save: () => { const c = cat || val('cat'); const v = val('v') ? parseAmount(val('v')) : 0; if (isNaN(v) || v < 0) return alert('Montant incorrect.'); if (v) state.budgets[c] = v; else delete state.budgets[c]; save(); closeSheet(); render(); }
   }, { focus: '[name=v]' });
 }
+/* ---------- Impression (papier ou PDF) ---------- */
+function printSheet() {
+  const P = { period: 'month', parts: ['summary', 'cats', 'ops', 'due'] };
+  const opt = (k, l, d) => `<label class="toggle"><input type="checkbox" name="p_${k}" ${P.parts.includes(k) ? 'checked' : ''}> <span><b>${l}</b>${d ? ' <span class="tiny">· ' + d + '</span>' : ''}</span></label>`;
+  openSheet('Imprimer', `<fieldset><legend>Période</legend><div class="seg light">${[['month', monthLabel(ui.month)], ['year', 'Année ' + ui.month.slice(0, 4)]].map(([v, l]) => `<button type="button" data-group="pperiod" data-v="${v}" aria-pressed="${v === 'month'}">${esc(l)}</button>`).join('')}</div></fieldset>
+    <label class="f">Compte<select name="pacc"><option value="">Tous les comptes</option>${activeAccounts().map(a => `<option value="${esc(a.id)}" ${ui.acc === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
+    <fieldset><legend>Contenu</legend>${opt('summary', 'Résumé', 'soldes, revenus, dépenses, reste')}${opt('cats', 'Par catégorie', 'avec sous-catégories')}${opt('ops', 'Liste des opérations')}${opt('due', 'Échéances à venir', 'mois affiché')}</fieldset>
+    <p class="tiny" style="margin:0">Dans la fenêtre d’impression, choisissez votre imprimante, ou « Enregistrer au format PDF » pour garder ou envoyer le document.</p>`,
+    `<button class="btn full" data-act="go">${ic('print', 18)} Imprimer</button>`, {
+    go: () => { const e = sf().elements, parts = ['summary', 'cats', 'ops', 'due'].filter(k => e['p_' + k].checked);
+      if (!parts.length) return alert('Cochez au moins un contenu.');
+      const html = printReport({ period: getPressed('pperiod') || 'month', acc: e.pacc.value, parts });
+      closeSheet(); const pa = $('#printArea'); pa.innerHTML = html;
+      setTimeout(() => { window.print(); }, 250); }
+  });
+}
+function printReport(o) {
+  const acc = o.acc, y = ui.month.slice(0, 4), months = o.period === 'year' ? Array.from({ length: 12 }, (_, i) => y + '-' + String(i + 1).padStart(2, '0')) : [ui.month];
+  const first = months[0] + '-01', last = endOfMonth(months[months.length - 1]);
+  const title = o.period === 'year' ? 'Bilan de l’année ' + y : 'Relevé · ' + monthLabel(ui.month);
+  const accLabel = acc ? accName(acc) : 'Tous les comptes';
+  const m = a => (a < 0 ? '−' : '') + money(Math.abs(a));
+  let h = `<header class="pr-head"><img src="../icons/colibri.png" alt="" width="54"><div><h1>${esc(title)}</h1><div class="pr-sub">${esc(accLabel)} · imprimé le ${dateFR(today())}</div></div></header>`;
+  const tot = { income: 0, expense: 0, byCat: {}, bySub: {} };
+  for (const mo of months) { const t = monthTotals(mo, 'all', acc); tot.income += t.income; tot.expense += t.expense; for (const k in t.byCat) tot.byCat[k] = (tot.byCat[k] || 0) + t.byCat[k]; for (const k in t.bySub) tot.bySub[k] = (tot.bySub[k] || 0) + t.bySub[k]; }
+  if (o.parts.includes('summary')) {
+    const prev = new Date(first + 'T12:00:00'); prev.setDate(prev.getDate() - 1);
+    const d0 = prev.toISOString().slice(0, 10), endAt = last < today() ? last : today();
+    const s0 = holdings(d0, acc).total, s1 = holdings(endAt, acc).total;
+    h += `<h2>Résumé</h2><table class="pr-t"><tbody>
+      <tr><td>Solde au ${dateFR(d0)}</td><td class="n">${m(s0)}</td></tr>
+      <tr><td>Revenus</td><td class="n">+${money(tot.income)}</td></tr>
+      <tr><td>Dépenses</td><td class="n">−${money(tot.expense)}</td></tr>
+      <tr class="b"><td>Reste (revenus − dépenses)</td><td class="n">${m(tot.income - tot.expense)}</td></tr>
+      <tr><td>Solde au ${dateFR(endAt)}</td><td class="n">${m(s1)}</td></tr></tbody></table>`;
+    if (o.period === 'year') {
+      h += `<table class="pr-t"><thead><tr><th>Mois</th><th class="n">Revenus</th><th class="n">Dépenses</th><th class="n">Reste</th></tr></thead><tbody>${months.map(mo => { const t = monthTotals(mo, 'all', acc); return t.income || t.expense ? `<tr><td>${esc(monthLabel(mo))}</td><td class="n">+${money(t.income)}</td><td class="n">−${money(t.expense)}</td><td class="n">${m(t.income - t.expense)}</td></tr>` : ''; }).join('')}</tbody></table>`;
+    }
+  }
+  if (o.parts.includes('cats')) {
+    for (const [type, label] of [['expense', 'Dépenses par catégorie'], ['income', 'Revenus par catégorie']]) {
+      const cats = Object.entries(tot.byCat).filter(([k]) => k.startsWith(type + '|')).map(([k, v]) => [k.split('|')[1], v]).sort((a, b) => b[1] - a[1]);
+      if (!cats.length) continue;
+      const sum = cats.reduce((a, [, v]) => a + v, 0);
+      h += `<h2>${label}</h2><table class="pr-t"><tbody>${cats.map(([c, v]) => {
+        const subs = Object.entries(tot.bySub).filter(([k]) => k.startsWith(type + '|' + c + '|') && k.split('|')[2]).map(([k, w]) => [k.split('|')[2], w]).sort((a, b) => b[1] - a[1]);
+        return `<tr class="b"><td>${esc(c)}</td><td class="n">${money(v)}</td><td class="n pc">${Math.round(v * 100 / sum)} %</td></tr>` + subs.map(([s, w]) => `<tr class="sub"><td>${esc(s)}</td><td class="n">${money(w)}</td><td></td></tr>`).join('');
+      }).join('')}<tr class="b tot"><td>Total</td><td class="n">${money(sum)}</td><td></td></tr></tbody></table>`;
+    }
+  }
+  if (o.parts.includes('ops')) {
+    const ops = months.flatMap(mo => monthTx(mo, acc)).filter(t => !isPlanned(t)).sort((a, b) => a.date.localeCompare(b.date));
+    h += `<h2>Opérations (${ops.length})</h2>` + (ops.length ? `<table class="pr-t pr-ops"><thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th>${acc ? '' : '<th>Compte</th>'}<th class="n">Montant</th></tr></thead><tbody>${ops.map(t => {
+      const cat = t.treatment === 'transfer' ? 'Virement interne' : t.treatment === 'settlement' ? 'Débit global carte (déjà compté)' : t.splits?.length > 1 ? 'Ticket détaillé' : t.category + (t.subcategory ? ' › ' + t.subcategory : '');
+      return `<tr><td>${dateFR(t.date).slice(0, 5)}</td><td>${esc(t.label)}${t.note ? `<div class="pr-note">${esc(t.note)}</div>` : ''}</td><td>${esc(cat)}</td>${acc ? '' : `<td>${esc(accName(t.account))}</td>`}<td class="n">${t.type === 'income' ? '+' : '−'}${money(t.amount)}</td></tr>`;
+    }).join('')}</tbody></table>` : '<p>Aucune opération.</p>');
+  }
+  if (o.parts.includes('due')) {
+    const due = dueList(ui.month, acc).filter(d => !d.tx || isPlanned(d.tx));
+    h += `<h2>Échéances à venir · ${esc(monthLabel(ui.month))}</h2>` + (due.length ? `<table class="pr-t"><tbody>${due.map(d => `<tr><td>${dateFR(d.date).slice(0, 5)}</td><td>${esc(d.label)}${d.sched?.note ? ' · ' + esc(d.sched.note) : ''}</td><td class="n">${d.type === 'income' ? '+' : d.type === 'transfer' ? '⇄ ' : '−'}${money(d.amount)}</td></tr>`).join('')}</tbody></table>` : '<p>Rien de prévu.</p>');
+  }
+  return h;
+}
 /* Groupes */
 function groupsSheet() {
   const count = id => state.categories.filter(c => groupOf(c.name) === id && !Object.values(SYSTEM).includes(c.name)).length;
@@ -1158,6 +1223,7 @@ function act(name, b) {
     case 'month': ui.month = addMonths(ui.month, Number(b.dataset.d)); render(); break;
     case 'year': ui.year += Number(b.dataset.d); render(); break;
     case 'groups': groupsSheet(); break;
+    case 'print': printSheet(); break;
     case 'triage': triage(0); break;
     case 'rules': rulesSheet(); break;
     case 'merge': mergeSheet(); break;
