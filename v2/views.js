@@ -209,6 +209,7 @@ function txRow(t, showDate = false) {
   if (isPlanned(t)) bits.push('<b>Prévue le ' + dateFR(t.date).slice(0, 5) + ' · pas encore passée</b>');
   else if (showDate) bits.push(dateFR(t.date));
   bits.push(t.treatment === 'transfer' ? 'Virement interne' : t.treatment === 'settlement' ? 'Débit global carte · déjà compté' : t.splits?.length ? 'Réparti · ' + t.splits.length + ' lignes' : esc(t.category) + (t.subcategory ? ' / ' + esc(t.subcategory) : ''));
+  if (commissionOf(t)) bits.push('client ' + money(t.gross) + ' · commission ' + money(commissionOf(t)));
   if (t.note && t.treatment !== 'transfer' && t.treatment !== 'settlement') bits.push(esc(t.note));
   if (showAccounts()) bits.push(esc(accName(t.account)));
   if (t.payment === 'deferred') bits.push('carte différée → ' + dateFR(t.dueDate).slice(0, 5));
@@ -277,14 +278,15 @@ function homeBungalow(m, acc) {
   const tot = monthTotals(m, 'bungalow', acc), y = m.slice(0, 4);
   const chan = CHANNELS.map(c => tot.bySub['income|Bungalow · Revenus|' + c] || 0);
   const otherInc = tot.income - chan.reduce((a, b) => a + b, 0);
-  const com = tot.byCat['expense|Bungalow · Commissions'] || 0, chg = tot.expense - com;
+  const comExp = tot.byCat['expense|Bungalow · Commissions'] || 0, chg = tot.expense - comExp;
+  const com = comExp + state.transactions.filter(t => inBudget(t) && budgetMonthOf(t) === m && (!acc || t.account === acc) && groupOf(t.category) === 'bungalow').reduce((a, t) => a + commissionOf(t), 0);
   const stays = state.transactions.filter(t => inBudget(t) && budgetMonthOf(t) === m && t.category === 'Bungalow · Revenus' && CHANNELS.includes(t.subcategory) && (!acc || t.account === acc)).length;
   let yi = 0, ye = 0; for (let i = 1; i <= 12; i++) { const r = monthTotals(y + '-' + pad(i), 'bungalow', acc); yi += r.income; ye += r.expense; }
   const colors = ['#0e5b66', '#e0613c', '#8fc6c4'], base = Math.max(1, chan.reduce((a, b) => a + b, 0));
   let h = `<section class="card hero"><div class="head"><span class="label">Bénéfice bungalow · ${esc(monthLabel(m).toLowerCase())}</span>${stays ? `<span class="tiny b" style="background:var(--coral-l);color:#7c2d12;border-radius:99px;padding:4px 10px">${stays} séjour${stays > 1 ? 's' : ''}</span>` : ''}</div><div class="big num" style="margin:6px 0 10px">${money(tot.income - tot.expense)}</div>`;
   h += `<div class="stack" aria-hidden="true">${chan.map((v, i) => v ? `<i style="width:${v / base * 100}%;background:${colors[i]}"></i>` : '').join('')}</div>`;
   h += `<div class="grid3" style="margin-top:10px">${CHANNELS.map((c, i) => `<div><div class="tiny"><span class="dot" style="background:${colors[i]}"></span>${c === 'Location en direct' ? 'Direct' : c}</div><div class="b">${moneyR(chan[i])}</div></div>`).join('')}</div>`;
-  h += `<div class="split small head"><span>Revenus ${moneyR(tot.income)}${otherInc ? ' (dont autres ' + moneyR(otherInc) + ')' : ''}</span><span>Commissions −${moneyR(com)} · Charges −${moneyR(chg)}</span></div></section>`;
+  h += `<div class="split small head"><span>Revenus réels ${moneyR(tot.income)}${otherInc ? ' (dont autres ' + moneyR(otherInc) + ')' : ''}</span><span>Charges −${moneyR(chg)}${com ? ' · commissions plateformes ' + moneyR(com) : ''}</span></div></section>`;
   h += `<section class="grid2"><div class="card"><div class="tiny">Revenus ${y}</div><div class="b pos num" style="font-size:20px">+${moneyR(yi)}</div></div><div class="card"><div class="tiny">Bénéfice ${y}</div><div class="b num" style="font-size:20px">${moneyR(yi - ye)}</div></div></section>`;
   h += `<div class="grid2"><button class="btn" data-act="form" data-form="bungalow">${ic('house', 18)} Revenu bungalow</button><button class="btn ghost" data-act="form" data-form="expense" data-cat="Bungalow · Charges">${ic('minus', 18)} Charge bungalow</button></div>`;
   const ops = monthTx(m, acc).filter(t => groupOf(t.category) === 'bungalow').slice(0, 8);
@@ -444,7 +446,7 @@ const PAGES = {
     return subTop('Aide') + '<main>' + p('Ajouter une dépense', 'Touchez <b>+</b>, puis « Dépense ». Montant, où, catégorie (devinée d’après vos habitudes), payé avec : c’est tout. La date du jour et votre compte habituel sont remplis d’office ; « Changer » pour les modifier.') +
       p('Carte à débit différé', 'Réglez une fois le compte (Plus › Mes comptes › Carte : Différée, jour du débit). Ensuite, chaque achat « Carte » est automatiquement ajouté au débit du mois suivant. Le solde baisse le jour du débit ; le budget compte la dépense le jour de l’achat.') +
       p('Échéances', 'Prélèvements, crédits, salaire, pension : créez-les une fois. Ils apparaissent chaque mois dans « Échéances ». Le jour venu, touchez ✓. Si le montant a changé, touchez la ligne pour le corriger, ou « Pas ce mois-ci ».') +
-      p('Bungalow', 'Raccourci + › Revenu bungalow : canal (direct, Airbnb, Booking), dates, montant payé par le voyageur. La commission est calculée et enregistrée à part. L’onglet Bungalow de l’accueil montre le bénéfice du mois et de l’année.') +
+      p('Bungalow', 'Raccourci + › Revenu bungalow : canal (direct, Airbnb, Booking), dates, somme réellement reçue sur le compte. Le prix payé par le client est facultatif : il sert seulement à calculer la commission, qui est déjà déduite du virement (rien à saisir en plus). L’onglet Bungalow de l’accueil montre le bénéfice du mois et de l’année.') +
       p('Google Drive', 'Vos données sont copiées dans votre Google Drive (fichier « ' + ED.file + ' »). Si le cache est vidé, reconnectez-vous : tout revient.') + '</main>';
   }
 };
@@ -581,7 +583,7 @@ const getPressed = group => sf().querySelector(`[data-group="${group}"][aria-pre
 function addMenu() {
   const big = (form, cls, icon, t, s) => `<button class="card row-item" data-act="form" data-form="${form}" style="background:${cls};border:0;min-height:76px"><span class="ico" style="background:#fff">${ic(icon, 20)}</span><span class="grow"><span class="t" style="display:block;font-size:17px">${t}</span><span class="s" style="display:block">${s}</span></span></button>`;
   openSheet('Ajouter', `<button class="btn ghost full" data-act="form" data-form="dict" style="min-height:58px;font-size:16px">${ic('mic', 22)} Dicter une opération</button><div class="grid2">${big('expense', 'var(--coral-l)', 'minus', 'Dépense', 'Achat, facture')}${big('income', 'var(--pos-l)', 'plus', 'Revenu', 'Salaire, pension…')}</div><div class="sec">Raccourcis</div><div class="card list" style="padding:0">
-  ${[['bungalow', 'house', 'Revenu bungalow', 'Direct, Airbnb ou Booking, avec la commission'], ['sale', 'leaf', 'Vente diverse', 'Objets, plantes, brocante'], ['transfer', 'transfer', 'Virement entre mes comptes', 'Ne compte pas dans le budget'], ['schedule', 'cal', 'Nouvelle échéance', 'Prélèvement, crédit, salaire qui revient']].map(([f, i, t, s]) => `<button class="row-item" data-act="form" data-form="${f}"><span class="ico">${ic(i, 20)}</span><span class="grow"><span class="t" style="display:block">${t}</span><span class="s" style="display:block">${s}</span></span>${ic('r', 18)}</button>`).join('')}</div>`, '');
+  ${[['bungalow', 'house', 'Revenu bungalow', 'Direct, Airbnb ou Booking : la somme reçue'], ['sale', 'leaf', 'Vente diverse', 'Objets, plantes, brocante'], ['transfer', 'transfer', 'Virement entre mes comptes', 'Ne compte pas dans le budget'], ['schedule', 'cal', 'Nouvelle échéance', 'Prélèvement, crédit, salaire qui revient']].map(([f, i, t, s]) => `<button class="row-item" data-act="form" data-form="${f}"><span class="ico">${ic(i, 20)}</span><span class="grow"><span class="t" style="display:block">${t}</span><span class="s" style="display:block">${s}</span></span>${ic('r', 18)}</button>`).join('')}</div>`, '');
 }
 
 /* Dépense / revenu en 4 champs */
@@ -607,6 +609,7 @@ function txForm(type, opts = {}) {
   <label class="f">${type === 'income' ? 'De qui / quoi ?' : 'Où / quoi ?'}<input name="label" list="labelsList" autocomplete="off" value="${esc(t?.label || opts.label || '')}" placeholder="${type === 'income' ? 'Ex. Réservation M. …, salaire, remboursement…' : 'Ex. Intermarché, pharmacie…'}"><datalist id="labelsList">${recentLabels(type).map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
   <input type="hidden" name="category" value="${esc(cat)}"><input type="hidden" name="subcategory" value="${esc(t?.subcategory || opts.subcategory || '')}">
   <fieldset><legend>Catégorie <span id="guessNote" class="tiny" style="font-weight:500;color:var(--pos)"></span></legend><div id="catBox"></div><div id="ruleBox"></div></fieldset>
+  ${type === 'income' ? `<div id="rentBox" style="display:none;border:1px dashed var(--field);border-radius:12px;padding:10px 12px"><label class="f">Prix payé par le client (facultatif)<input name="gross" inputmode="decimal" placeholder="0,00 €" value="${t?.gross ? amountInput(t.gross) : ''}"></label><div id="rentNote" style="margin-top:6px"></div><div class="tiny" style="margin-top:4px">Montant en haut = la somme réellement reçue. La commission est déjà déduite du virement : rien à saisir en plus.</div></div>` : ''}
   <fieldset><legend>${type === 'income' ? 'Reçu par' : 'Payé avec'}</legend>${payButtons(acc, pay)}</fieldset>
   <div id="payInfo"></div>
   ${type === 'expense' ? `<label class="toggle" id="splitTog" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="split" ${t?.splits?.length || opts.split ? 'checked' : ''}> <span><b>Détailler le ticket</b> <span class="tiny">· un seul achat, plusieurs articles ou catégories (supermarché…)</span></span></label><div id="splitBox" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -621,7 +624,8 @@ function txForm(type, opts = {}) {
   ${xferBox(false)}</div></details>${xferBox(true)}`;
   const foot = (isEdit ? `<button class="btn danger" data-act="del" aria-label="Supprimer">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">${isEdit ? 'Enregistrer' : type === 'income' ? 'Enregistrer le revenu' : 'Enregistrer la dépense'}</button>`;
   const F = { dateTouched: isEdit, type, splits: t?.splits ? t.splits.map(l => ({ ...l })) : null, guessed: false, autoFirst: t?.splits?.length ? false : true };
-  const drawCats = () => { setTimeout(drawRule, 0);
+  const drawRent = () => { const box = $('#rentBox'); if (!box) return; const on = isRentIncome(val('category'), val('subcategory')) || !!t?.gross; box.style.display = on ? '' : 'none'; if (on) $('#rentNote').innerHTML = rentRecap(parseAmount(val('amount')) || 0, parseAmount(val('gross')) || 0, PLATFORMS.includes(val('subcategory')) ? val('subcategory') : 'plateforme'); };
+  const drawCats = () => { setTimeout(drawRule, 0); setTimeout(drawRent, 0);
     const cur = val('category'); const guess = guessCategory(val('label'), type, parseAmount(val('amount')) || 0);
     const chips = [...new Set([cur, guess?.category, ...topCategories(type, 4), ...(type === 'income' ? ['Pension', 'Salaire', 'Revenus divers', 'Bungalow · Revenus', 'Ventes diverses'] : ['Alimentation', 'Voiture & transport', 'Santé et mutuelle', 'Entretien de la maison', 'Loisirs et passions'])].filter(c => c && catByName(c) && !catByName(c).hidden))].slice(0, 6);
     const c = catByName(cur);
@@ -756,10 +760,11 @@ function txForm(type, opts = {}) {
         if (sf().elements.buys?.checked) return saveBuys();
         const e = sf().elements;
         if (!e.category.value) { const g = guessCategory(e.label.value, type); e.category.value = g?.category || 'Autres'; }
-        const f = { id: t?.id, type, account: e.account.value, date: e.date.value, amount: e.amount.value, label: e.label.value, category: e.category.value, subcategory: e.subcategory.value, note: e.note.value, payment: getPressed('pay'), planned: e.planned.checked, budgetMonth: e.nextMonth.checked ? addMonths(e.date.value.slice(0, 7), 1) : '' };
+        const f = { id: t?.id, type, gross: e.gross && $('#rentBox').style.display !== 'none' ? e.gross.value : '', account: e.account.value, date: e.date.value, amount: e.amount.value, label: e.label.value, category: e.category.value, subcategory: e.subcategory.value, note: e.note.value, payment: getPressed('pay'), planned: e.planned.checked, budgetMonth: e.nextMonth.checked ? addMonths(e.date.value.slice(0, 7), 1) : '' };
         if (F.splits && e.split?.checked) f.splits = F.splits.filter(l => l.amount > 0).map(l => ({ label: l.label || l.category, category: l.category, subcategory: l.subcategory || '', amount: l.amount }));
         if (t) for (const k of ['recurringId', 'recurringDate', 'importId', 'groupId', 'treatment', 'transferId', 'chequeNumber', 'bankLabel']) if (t[k]) f[k] = t[k];
         if (t?.payment === 'deferred' && f.payment === 'card' && t.account === f.account && t.date === f.date) f.dueDate = t.dueDate;
+        if (f.gross && parseAmount(f.gross) && parseAmount(f.gross) <= parseAmount(f.amount)) throw Error('Le prix payé par le client doit être supérieur à la somme reçue (ou laissez-le vide).');
         const n = buildTx(f);
         if (t?.transferId) { const others = state.transactions.filter(x => x.transferId === t.transferId && x.id !== t.id); if (others.some(o => o.account === n.account)) throw Error('Les deux côtés d’un virement doivent être sur deux comptes différents.'); for (const o of others) { o.amount = n.amount; o.date = n.date; o.label = n.label; } }
         upsertTx(n);
@@ -791,7 +796,8 @@ function txForm(type, opts = {}) {
     sf().dataset.dirty = '1'; }
   sheet.inputs = {
     label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type, parseAmount(val('amount')) || 0); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = g.rule ? '· règle automatique' : g.sameAmount ? '· même libellé et même montant qu’avant' : '· devinée d’après « ' + val('label') + ' »'; drawCats(); } else drawRule(); } else drawRule(); },
-    amount: () => { if (F.buys) F.amtAuto = !(parseAmount(val('amount')) > 0); updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
+    gross: () => drawRent(),
+    amount: () => { drawRent(); if (F.buys) F.amtAuto = !(parseAmount(val('amount')) > 0); updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
     'split-lbl': el => { F.splits[Number(el.dataset.i)].label = el.value; },
     'buy-amt': el => { const i = Number(el.dataset.i), b = F.buys[i]; b.amount = parseAmount(el.value) || 0; updBuySum(); tkAutoFill(b, i); tkUpd(i); },
     'tk-amt': el => { const i = Number(el.dataset.i), j = Number(el.dataset.j), b = F.buys[i]; b.tk[j].amount = parseAmount(el.value) || 0; if (j === 0) b.tkAuto = false; else tkAutoFill(b, i); tkUpd(i); },
@@ -830,44 +836,43 @@ function txForm(type, opts = {}) {
   if (opts.autoDict) acts.dict();
 }
 
-/* Revenu bungalow : brut + commission → 2 opérations */
+/* Revenu bungalow : la somme réellement reçue = le revenu ; le prix client (facultatif) donne la commission */
+function rentRecap(net, gross, ch) {
+  if (!gross) return `<span class="tiny">Facultatif. Indiquez-le pour connaître la commission ${esc(ch)}.</span>`;
+  if (gross <= net) return `<span class="tiny neg">Le prix client doit être supérieur à la somme reçue.</span>`;
+  const c = gross - net; return `<span class="b">Commission ${esc(ch)} : ${money(c)}</span> <span class="tiny">(${(Math.round(c / gross * 1000) / 10).toLocaleString('fr-FR')} % du prix client) · déjà déduite du virement</span>`;
+}
 function bungalowForm() {
-  const rates = state.settings.bungalowRates; const acc = formAcc();
-  const body = `<fieldset><legend>Canal de réservation</legend><div class="seg light">${CHANNELS.map((c, i) => `<button type="button" data-group="chan" data-v="${c}" aria-pressed="${i === 1}">${c === 'Location en direct' ? 'En direct' : c}</button>`).join('')}</div></fieldset>
-  <div class="grid2">${dateField('from', today(), 'date', 'Arrivée')}${dateField('to', '', 'date', 'Départ', true)}</div><div class="tiny" id="nights" style="margin-top:-8px"></div>
-  <label class="f">Montant payé par le voyageur (brut)<input name="gross" inputmode="decimal" placeholder="0,00 €" style="font:700 22px Outfit,sans-serif;color:var(--pos);height:54px"></label>
-  <div class="grid2" id="comBox"><label class="f">Commission<input name="com" inputmode="decimal" placeholder="0,00 €"></label>${dateField('paid', today(), 'date', 'Versé le')}</div><div class="tiny" id="rateNote" style="margin-top:-8px"></div>
-  <section id="recap" class="card" style="background:var(--bg);padding:14px"></section>
-  <details class="more"><summary><span>${esc(accName(acc))} <span class="link">Changer, note</span></span>${ic('down', 18)}</summary><div><label class="f">Compte<select name="account">${accOptions(acc)}</select></label><label class="f">Note<input name="note" placeholder="Ex. famille Martin, 2 adultes"></label></div></details>`;
-  let touched = false;
+  const acc = formAcc();
+  const body = `<fieldset><legend>Canal de réservation</legend><div class="seg light">${CHANNELS.map((c, i) => `<button type="button" data-group="chan" data-v="${c}" aria-pressed="${i === 2}">${c === 'Location en direct' ? 'En direct' : c}</button>`).join('')}</div></fieldset>
+  <label class="f">Somme réellement reçue sur le compte<input name="net" inputmode="decimal" placeholder="0,00 €" style="font:700 22px Outfit,sans-serif;color:var(--pos);height:54px"></label>
+  <div id="grossBox"><label class="f">Prix payé par le client (facultatif)<input name="gross" inputmode="decimal" placeholder="0,00 €"></label><div id="comNote" style="margin-top:6px"></div></div>
+  <div class="grid2">${dateField('paid', today(), 'date', 'Reçu le')}<span></span></div>
+  <div class="grid2">${dateField('from', '', 'date', 'Arrivée', true)}${dateField('to', '', 'date', 'Départ', true)}</div><div class="tiny" id="nights" style="margin-top:-8px"></div>
+  <details class="more"><summary><span>${esc(accName(acc))} <span class="link">Changer, note</span></span>${ic('down', 18)}</summary><div><label class="f">Compte<select name="account">${accOptions(acc)}</select></label><label class="f">Note<input name="note" placeholder="Ex. réservation M. …"></label></div></details>`;
   const upd = () => {
-    const ch = getPressed('chan'), direct = ch === 'Location en direct', g = parseAmount(val('gross')) || 0;
-    $('#comBox').querySelector('label').style.display = direct ? 'none' : '';
-    if (!direct && !touched) sf().elements.com.value = g ? amountInput(Math.round(g * (rates[ch] || 0) / 100)) : '';
-    const c = direct ? 0 : parseAmount(val('com')) || 0;
-    $('#rateNote').textContent = direct ? '' : 'Taux mémorisé pour ' + ch + ' : ' + (rates[ch] || 0) + ' % · ajustez selon votre relevé';
+    const ch = getPressed('chan'), direct = ch === 'Location en direct', net = parseAmount(val('net')) || 0, g = parseAmount(val('gross')) || 0;
+    $('#grossBox').style.display = direct ? 'none' : '';
+    $('#comNote').innerHTML = direct ? '' : rentRecap(net, g, ch);
     const n = val('to') && val('from') ? Math.round((new Date(val('to')) - new Date(val('from'))) / 864e5) : 0;
     $('#nights').textContent = n > 0 ? n + ' nuit' + (n > 1 ? 's' : '') : '';
-    $('#recap').innerHTML = `<div class="head"><span class="b">Net reçu sur le compte</span><span class="num b" style="font-size:22px">${money(g - c)}</span></div>${g ? `<div class="small" style="margin-top:6px">${c ? 'Deux opérations seront créées :' : 'Une opération sera créée :'}</div><div class="head small"><span>Bungalow · Revenus / ${esc(ch)}</span><span class="pos b">+${money(g)}</span></div>${c ? `<div class="head small"><span>Bungalow · Commissions / Commission ${esc(ch)}</span><span class="neg b">−${money(c)}</span></div>` : ''}` : ''}`;
   };
   openSheet('Revenu bungalow', body, `<button class="btn full" data-act="save">Enregistrer le séjour</button>`, {
     save: () => {
       try {
-        const ch = getPressed('chan'), direct = ch === 'Location en direct', g = parseAmount(val('gross')), c = direct ? 0 : (parseAmount(val('com')) || 0);
-        if (!g || g <= 0) throw Error('Indiquez le montant payé par le voyageur.');
-        if (c >= g) throw Error('La commission doit être inférieure au montant brut.');
+        const ch = getPressed('chan'), direct = ch === 'Location en direct', net = parseAmount(val('net')), g = direct ? 0 : (parseAmount(val('gross')) || 0);
+        if (!net || net <= 0) throw Error('Indiquez la somme réellement reçue sur le compte.');
+        if (g && g <= net) throw Error('Le prix payé par le client doit être supérieur à la somme reçue (ou laissez-le vide).');
         const n = val('to') && val('from') ? Math.round((new Date(val('to')) - new Date(val('from'))) / 864e5) : 0;
-        const date = val('paid') || today(), groupId = uid(), label = (direct ? 'Location directe' : ch) + (n > 0 ? ' · séjour ' + n + ' nuit' + (n > 1 ? 's' : '') : '') + (val('from') ? ' du ' + dateFR(val('from')).slice(0, 5) : '');
-        state.transactions.push(buildTx({ type: 'income', account: val('account'), date, amount: g, label, category: 'Bungalow · Revenus', subcategory: ch, payment: 'transfer', note: val('note'), groupId }));
-        if (c) state.transactions.push(buildTx({ type: 'expense', account: val('account'), date, amount: c, label: 'Commission ' + ch, category: 'Bungalow · Commissions', subcategory: 'Commission ' + ch, payment: 'transfer', groupId }));
-        if (c && touched) rates[ch] = Math.round(c / g * 1000) / 10;
-        save(); closeSheet(); render(); toast('Séjour enregistré · net ' + money(g - c));
+        const date = val('paid') || today(), label = (direct ? 'Location directe' : ch) + (n > 0 ? ' · séjour ' + n + ' nuit' + (n > 1 ? 's' : '') : '') + (val('from') ? ' du ' + dateFR(val('from')).slice(0, 5) : '');
+        state.transactions.push(buildTx({ type: 'income', account: val('account'), date, amount: net, gross: g, label, category: 'Bungalow · Revenus', subcategory: ch, payment: 'transfer', note: val('note') }));
+        save(); closeSheet(); render(); toast('Séjour enregistré · ' + money(net) + (g ? ' · commission ' + money(g - net) : ''));
       } catch (e) { alert(e.message); }
     }
   });
-  sheet.inputs = { gross: upd, com: () => { touched = true; upd(); } };
+  sheet.inputs = { net: upd, gross: upd };
   sheet.changes = { any: upd };
-  sheet.afterPress = () => { touched = false; upd(); };
+  sheet.afterPress = upd;
   upd();
 }
 

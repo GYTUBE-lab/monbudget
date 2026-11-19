@@ -502,8 +502,13 @@ function buildTx(f) {
     t.splits = f.splits; t.category = f.splits[0].category; t.subcategory = f.splits[0].subcategory || undefined;
   }
   for (const k of ['recurringId', 'recurringDate', 'importId', 'groupId', 'treatment', 'transferId', 'chequeNumber', 'bankLabel']) if (f[k]) t[k] = f[k];
+  if (t.type === 'income') { const g = typeof f.gross === 'number' ? f.gross : parseAmount(f.gross || ''); if (g && g > amount) t.gross = g; } // prix payé par le client (location via plateforme)
   return t;
 }
+/* Location via Airbnb / Booking : le montant = la somme réellement reçue ; la commission se déduit du prix client */
+const PLATFORMS = ['Airbnb', 'Booking'];
+const commissionOf = t => t.type === 'income' && t.gross > t.amount ? t.gross - t.amount : 0;
+const isRentIncome = (cat, sub) => cat === 'Bungalow · Revenus' && sub !== 'Location en direct' && sub !== 'Ménage facturé' && sub !== 'Taxe de séjour encaissée';
 function upsertTx(t) { const i = state.transactions.findIndex(x => x.id === t.id); if (i >= 0) state.transactions[i] = t; else state.transactions.push(t); }
 function deleteTx(id) {
   const t = state.transactions.find(x => x.id === id); if (!t) return;
