@@ -222,6 +222,8 @@ function render() {
   if (!state.accounts.length || ui.onboard) { document.body.classList.remove('t-due'); $('#tabs').hidden = true; app.innerHTML = welcome(); return; }
   $('#tabs').hidden = false; renderTabs();
   document.body.classList.toggle('t-due', ui.tab === 'due');
+  document.body.classList.toggle('t-home', ui.tab === 'home');
+  document.body.classList.toggle('t-plus', ui.tab === 'plus');
   let h = '';
   if (ui.tab === 'home') h = home();
   else if (ui.tab === 'ops') h = opsView();
