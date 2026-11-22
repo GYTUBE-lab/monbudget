@@ -219,17 +219,20 @@ table.t td{border-top:1px solid var(--line);padding:9px 0;text-align:right}
 .hero-bird{display:block;width:min(300px,78vw);height:auto;margin:4px auto 0}
 .welcome .top>p{text-align:center}
 /* Onglet Échéances : dégradé violet, fond noir, fenêtres blanches */
-html:has(body.t-due),body.t-due{background:#0e0c14}
-body.t-due .top{--teal-d:rgba(0,0,0,.32);background:radial-gradient(circle at 90% 0%,rgba(255,122,182,.45) 0%,rgba(255,122,182,0) 40%),linear-gradient(140deg,#24178a 0%,#4b2fd6 55%,#8e44e8 100%)}
-body.t-due .sec{color:#c9b8ff}
-body.t-due .empty{color:#d9d2ff}
-body.t-due .day{background:linear-gradient(140deg,#24178a,#8e44e8);color:#fff;border-radius:12px;padding:5px 0;line-height:1.1}
+html:has(body.t-due),body.t-due{background:linear-gradient(180deg,#FBF7EC 0%,#F2E8CD 100%) fixed;background-color:#F6EFDB}
+body.t-due .top{--teal-d:rgba(255,255,255,.6);color:#1E1B12;background:radial-gradient(circle at 85% 0%,rgba(255,255,255,.75) 0%,rgba(255,255,255,0) 45%),linear-gradient(140deg,#F1E6C6 0%,#DCC891 100%);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+body.t-due .top *{color:inherit}
+body.t-due .top .tiny{color:#5E5641!important}
+body.t-due .top select{color:#1E1B12}
+body.t-due .sec{color:#8C6E2A}
+body.t-due .empty{color:#5E5641}
+body.t-due .day{background:linear-gradient(140deg,#B8964A,#8C6E2A);color:#fff;border-radius:12px;padding:5px 0;line-height:1.1}
 body.t-due .day b{color:#fff}
-body.t-due .btn.dashed{background:#fff;border-color:#8e44e8}
-body.t-due nav.tabs{background:#000;box-shadow:none;border-top:1px solid #26222f}
-body.t-due nav.tabs button{color:#b9b3c6}
-body.t-due nav.tabs button[aria-current=page]{color:#fff}
-body.t-due nav.tabs .plus{background:linear-gradient(140deg,#4b2fd6,#8e44e8);border-color:#000;box-shadow:0 6px 14px rgba(142,68,232,.45)}
+body.t-due .btn.dashed{background:#fff;border-color:#B8964A;color:#8C6E2A}
+body.t-due nav.tabs{background:#fff;border-top:1px solid #EEE5CC}
+body.t-due nav.tabs button{color:#5E5641}
+body.t-due nav.tabs button[aria-current=page]{color:#8C6E2A}
+body.t-due nav.tabs .plus{background:linear-gradient(140deg,#C9A75A,#8C6E2A);border-color:#fff;color:#fff;box-shadow:0 6px 14px rgba(140,110,42,.4)}
 #printArea{display:none}
 @media print{
   @page{margin:14mm}
