@@ -272,6 +272,22 @@ body.t-due nav.tabs .plus{background:linear-gradient(140deg,#C9A75A,#8C6E2A);bor
   tr{break-inside:avoid}
 }
 .lbar{display:block;flex-basis:100%;height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}.lbar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),#13897f)}.loan-row{flex-wrap:wrap}
+/* PC : colonne encadrée sur fond de la couleur de l’onglet */
+@media (min-width:900px){
+  .app{max-width:680px;margin:20px auto 0;border-radius:28px 28px 0 0;box-shadow:0 10px 40px rgba(0,0,0,.10);min-height:calc(100dvh - 20px)}
+  nav.tabs .in{max-width:680px}
+  html:has(body.t-home){background:linear-gradient(135deg,#B9D3D3 0%,#DCCFAA 100%) fixed}
+  body.t-home{background:transparent}
+  body.t-home .app{background:linear-gradient(180deg,#FBF7EC 0%,#F4EEDC 100%)}
+  html:has(body.t-due){background:linear-gradient(135deg,#E2CE95 0%,#C9AE6A 100%) fixed}
+  body.t-due{background:transparent}
+  body.t-due .app{background:linear-gradient(180deg,#FBF7EC 0%,#F2E8CD 100%)}
+  html:has(body.t-plus){background:linear-gradient(135deg,#EDB9B4 0%,#DE9A94 100%) fixed}
+  body.t-plus{background:transparent}
+  body.t-plus .app{background:linear-gradient(180deg,#FDF4F3 0%,#F7E3E1 100%)}
+  html:not(:has(body.t-home)):not(:has(body.t-due)):not(:has(body.t-plus)){background:#C9DCDC}
+  body:not(.t-home):not(.t-due):not(.t-plus) .app{background:var(--bg)}
+}
 </style>
 </head>
 <body>
