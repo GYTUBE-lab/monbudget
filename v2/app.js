@@ -136,7 +136,7 @@ function inView(category, view) {
 const guessGroup = n => /^bungalow/i.test(n) ? 'bungalow' : /^ventes?/i.test(n) ? 'ventes' : 'perso';
 
 /* ---------- État ---------- */
-const blank = () => ({ v: 2, groups: DEFAULT_GROUPS(), accounts: [], transactions: [], schedules: [], categories: presetCategories(), budgets: {}, imports: [], settings: { bungalowRates: { Airbnb: 15, Booking: 17 } }, createdAt: today() });
+const blank = () => ({ v: 2, groups: DEFAULT_GROUPS(), accounts: [], transactions: [], schedules: [], loans: [], categories: presetCategories(), budgets: {}, imports: [], settings: { bungalowRates: { Airbnb: 15, Booking: 17 } }, createdAt: today() });
 let state;
 /* Réparation : un « virement » dont les deux côtés sont sur le même compte (ou dont un côté manque) redevient une opération normale */
 function repairTransfers(s) {
@@ -165,6 +165,7 @@ function validate(s) {
   if (Array.isArray(s.categories) && !s.categories.some(c => c.name === TODO_CAT)) s.categories.unshift({ name: TODO_CAT, group: 'perso', kind: 'out', subs: [], hidden: false });
   if (Array.isArray(s.categories) && !s.categories.some(c => c.name === OFF_CAT)) s.categories.push({ name: OFF_CAT, group: 'perso', kind: 'both', subs: ['Avance / prêt à un proche', 'Remboursement d’un proche', 'Achat pour quelqu’un', 'Correction'], hidden: false });
   if (!Array.isArray(s.rules)) s.rules = [];
+  if (!Array.isArray(s.loans)) s.loans = [];
   if (!s.groups.some(g => g.id === 'perso')) s.groups.unshift({ id: 'perso', name: 'Vie courante', tab: false });
   s.budgets ||= {}; s.settings ||= {}; s.settings.bungalowRates ||= { Airbnb: 15, Booking: 17 };
   for (const a of s.accounts) if (!a || typeof a.id !== 'string' || typeof a.name !== 'string') throw Error('Compte invalide.');
@@ -412,7 +413,7 @@ function dueList(month, acc = '') {
     for (const o of occurrences(s, month)) {
       if (isSkipped(s, o.date) || isDone(s, o.date)) continue;
       const p = plannedFor(s, o.date);
-      out.push({ key: 's:' + s.id + ':' + o.date, sched: s, tx: p, date: p?.date || o.date, amount: p?.amount || o.amount, type: s.type, label: s.label, account: s.account, toAccount: s.toAccount, category: s.type === 'transfer' ? SYSTEM.transfer : s.category });
+      out.push({ key: 's:' + s.id + ':' + o.date, sched: s, tx: p, date: p?.date || o.date, amount: p?.amount || o.amount, type: s.type, label: schedLabel(s, o.date), account: s.account, toAccount: s.toAccount, category: s.type === 'transfer' ? SYSTEM.transfer : s.category });
     }
   }
   for (const t of state.transactions) if (isPlanned(t) && !t.recurringId && t.date.startsWith(month) && (!acc || t.account === acc))
@@ -530,8 +531,66 @@ function confirmDue(d, amount, date) {
   if (d.tx) { d.tx.status = undefined; delete d.tx.status; d.tx.amount = amount; if (date) { d.tx.date = date; if (d.tx.payment === 'deferred') d.tx.dueDate = dueDateFor(accountById(d.tx.account), date); } return d.tx; }
   const s = d.sched;
   if (s.type === 'transfer') { const ts = createTransfer(s.account, s.toAccount, date || d.date, amount, s.label); ts.forEach(t => { t.recurringId = s.id; t.recurringDate = d.date; }); return ts[0]; }
-  const t = buildTx({ account: s.account, type: s.type, date: date || d.date, amount, label: s.label, note: s.note, category: s.category, subcategory: s.subcategory, payment: s.payment || 'directDebit', splits: s.splits?.length && s.amount === amount ? s.splits : undefined, recurringId: s.id, recurringDate: d.date, budgetMonth: s.nextMonthBudget ? addMonths(d.date.slice(0, 7), 1) : undefined });
+  const t = buildTx({ account: s.account, type: s.type, date: date || d.date, amount, label: schedLabel(s, d.date), note: s.note, category: s.category, subcategory: s.subcategory, payment: s.payment || 'directDebit', splits: s.splits?.length && s.amount === amount ? s.splits : undefined, recurringId: s.id, recurringDate: d.date, budgetMonth: s.nextMonthBudget ? addMonths(d.date.slice(0, 7), 1) : undefined });
   state.transactions.push(t); return t;
+}
+
+/* ---------- Prêts, crédits et achats en plusieurs fois ----------
+   Seule la mensualité réellement payée compte dans le budget du mois.
+   loan  : { id, kind:'loan', name, account, schedId, remaining, refDate, end?, borrowed?, closed?, closeAmount? }
+   split : { id, kind:'split', name, account, schedId, total, n, closed?, closeAmount? }  (échéance à dates précises) */
+const loanSched = l => state.schedules.find(s => s.id === l.schedId) || null;
+const schedLabel = (s, date) => { if (!s.splitN || !s.custom?.length) return s.label; const i = s.custom.findIndex(x => x.date === date); return i >= 0 ? s.label + ' ' + (i + 1) + '/' + s.splitN : s.label; };
+/* Occurrences pas encore payées, à partir du mois en cours */
+function openOcc(s, untilMonth, max = 600) {
+  const out = []; if (!s || s.paused) return out;
+  if (s.custom?.length) return s.custom.filter(x => !isDone(s, x.date) && !isSkipped(s, x.date)).slice(0, max);
+  let m = today().slice(0, 7);
+  for (let i = 0; i < 600 && out.length < max; i++, m = addMonths(m, 1)) {
+    if (untilMonth && m > untilMonth) break; if (s.end && m > s.end) break;
+    for (const o of occurrences(s, m)) if (!isDone(s, o.date) && !isSkipped(s, o.date)) out.push(o);
+  }
+  return out.slice(0, max);
+}
+function loanInfo(l) {
+  const s = loanSched(l), t0 = today(), soldNow = !!(l.closed && l.closed <= t0);
+  if (l.kind === 'split') {
+    const left = openOcc(s), sum = left.reduce((a, x) => a + x.amount, 0);
+    const rem = soldNow ? 0 : l.closed ? (l.closeAmount ?? sum) : sum, n = soldNow || l.closed ? 0 : left.length;
+    return { rem, n, monthly: s?.amount || 0, total: l.total, pct: l.total ? Math.min(100, Math.round((l.total - rem) / l.total * 100)) : null, end: s?.custom?.at(-1)?.date || '', next: left[0] || null, done: !rem && !n };
+  }
+  const paid = s ? state.transactions.filter(t => t.recurringId === s.id && !isPlanned(t) && t.date > l.refDate).reduce((a, t) => a + t.amount, 0) : 0;
+  let rem = Math.max(0, (l.remaining || 0) - paid);
+  if (l.closed) rem = soldNow ? 0 : (l.closeAmount ?? rem);
+  const monthly = s?.amount || 0;
+  let n = 0, end = l.end || '';
+  if (rem > 0 && !l.closed && s) {
+    if (l.end) n = openOcc(s, l.end).length;
+    else if (monthly) { n = Math.ceil(rem / monthly); end = openOcc(s, '', n).at(-1)?.date.slice(0, 7) || ''; }
+  }
+  return { rem, n, monthly, total: l.borrowed || 0, pct: l.borrowed ? Math.max(0, Math.min(100, Math.round((l.borrowed - rem) / l.borrowed * 100))) : null, end, next: s ? openOcc(s, '', 1)[0] || null : null, done: soldNow };
+}
+/* Solder : une seule opération, hors budget sauf si demandé ; les mensualités suivantes s'arrêtent */
+function closeLoan(l, o) {
+  const s = loanSched(l);
+  const t = buildTx({ type: 'expense', account: o.account, date: o.date, amount: o.amount, label: 'Solde ' + l.name, category: o.inBudget ? (s?.category || 'Crédits') : OFF_CAT, subcategory: o.inBudget ? (s?.subcategory || '') : '', payment: 'directDebit', planned: o.date > today(), note: l.kind === 'split' ? 'Reste payé en une fois' : 'Remboursement anticipé' });
+  t.loanId = l.id; state.transactions.push(t);
+  if (s) {
+    if (s.custom?.length) { s.custom = s.custom.filter(x => isDone(s, x.date)); if (!s.custom.length) s.paused = true; else s.end = s.custom.at(-1).date.slice(0, 7); }
+    else {
+      const m = o.date.slice(0, 7), paidThisMonth = state.transactions.some(x => x.recurringId === s.id && (x.recurringDate || x.date).startsWith(m));
+      const end = paidThisMonth || !schedDays(s).some(d => clampDay(m, d) > o.date) ? m : addMonths(m, -1);
+      s.end = end; if (end < s.start) s.paused = true;
+    }
+  }
+  l.closed = o.date; l.closeAmount = o.amount; l.closeTx = t.id;
+  return t;
+}
+/* Plan d'un achat en plusieurs fois : la dernière mensualité absorbe l'arrondi */
+function splitPlan(total, n, per, start) {
+  if (!validDate(start) || !(n >= 2)) return [];
+  const p = per > 0 ? per : Math.round(total / n), last = per > 0 ? per : total - p * (n - 1), ym = start.slice(0, 7), day = Number(start.slice(8));
+  return Array.from({ length: n }, (_, k) => ({ date: clampDay(addMonths(ym, k), day), amount: k === n - 1 ? last : p }));
 }
 
 /* ---------- Conversion depuis la version actuelle (v1) ---------- */

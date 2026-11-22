@@ -360,7 +360,7 @@ function plusView() {
   const hold = holdings(); const pend = pendingDeferred().reduce((a, t) => a + t.amount, 0);
   const item = (page, icon, cls, t, s, right = ic('r', 18)) => `<button class="row-item" data-act="page" data-page="${page}"><span class="ico ${cls}">${ic(icon, 20)}</span><span class="grow"><span class="t" style="display:block">${t}</span><span class="s" style="display:block">${s}</span></span>${right}</button>`;
   return `<div class="page-top"><div class="row"><h1>Plus</h1></div></div><main>
-  <section class="card list">${item('accounts', 'bank', '', 'Mes comptes', 'Soldes, banques, cartes, virements', `<span class="amt">${moneyR(hold.total)}</span>`)}${item('card', 'card', 'c', 'Carte à paiement différé', 'Achats en attente de débit', pend ? `<span class="amt neg">${moneyR(pend)}</span>` : ic('r', 18))}${item('budgets', 'chart', 'w', 'Budgets (enveloppes)', 'Limites par catégorie')}${item('bilan', 'chart', 'g', 'Bilan annuel', 'Mois par mois, perso et bungalow')}</section>
+  <section class="card list">${item('accounts', 'bank', '', 'Mes comptes', 'Soldes, banques, cartes, prêts et crédits', `<span class="amt">${moneyR(hold.total)}</span>`)}${item('card', 'card', 'c', 'Carte à paiement différé', 'Achats en attente de débit', pend ? `<span class="amt neg">${moneyR(pend)}</span>` : ic('r', 18))}${item('budgets', 'chart', 'w', 'Budgets (enveloppes)', 'Limites par catégorie')}${item('bilan', 'chart', 'g', 'Bilan annuel', 'Mois par mois, perso et bungalow')}</section>
   <section class="card list">${item('cats', 'tag', '', 'Catégories', 'Catégories et sous-catégories')}${item('backup', 'cloud', 'g', 'Sauvegardes et Google Drive', 'Import du relevé bancaire, export, restauration')}</section>
   <section class="card list">${item('help', 'help', '', 'Aide', 'Comment ça marche')}<div class="row-item"><span class="ico">${ic('phone', 20)}</span><span class="grow"><span class="t" style="display:block">Mon Budget v2</span><span class="s" style="display:block">Version d’essai, données séparées de la version actuelle</span></span></div></section></main>`;
 }
@@ -375,7 +375,8 @@ const PAGES = {
       for (const a of accs) { const b = balance(a.id); const p = pendingDeferred(a.id).reduce((s, t) => s + t.amount, 0); h += `<button class="row-item" data-act="form" data-form="account" data-id="${esc(a.id)}"><span class="grow"><span class="t" style="display:block">${esc(a.name)}${state.settings.defaultAccount === a.id ? ' <span class="tiny">· par défaut</span>' : ''}</span><span class="s" style="display:block">${({ courant: 'Courant', epargne: 'Épargne', especes: 'Espèces' })[a.type]}${a.card === 'differee' ? ' · carte différée (débit le ' + a.debitDay + ')' : a.card === 'immediate' ? ' · carte immédiate' : ''}${p ? ' · −' + moneyR(p) + ' à venir' : ''}</span></span><span class="amt">${b === null ? '<span class="tiny">Solde à saisir</span>' : money(b)}</span></button>`; }
       h += '</section>';
     }
-    h += `<div class="grid2"><button class="btn" data-act="form" data-form="transfer">${ic('transfer', 18)} Virement</button><button class="btn ghost" data-act="form" data-form="account">${ic('plus', 18)} Ajouter un compte</button></div><p class="tiny" style="text-align:center;margin:0">Touchez un compte pour le renommer, régler sa carte, corriger son solde, l’archiver ou le supprimer.</p>`;
+    h += loansHTML();
+    h += `<div class="grid2"><button class="btn" data-act="form" data-form="transfer">${ic('transfer', 18)} Virement</button><button class="btn ghost" data-act="form" data-form="account">${ic('plus', 18)} Ajouter un compte</button></div><button class="btn ghost full" data-act="loan-new">${ic('plus', 18)} Ajouter un prêt ou un crédit</button><p class="tiny" style="text-align:center;margin:0">Touchez un compte pour le renommer, régler sa carte, corriger son solde, l’archiver ou le supprimer.</p>`;
     const arch = state.accounts.filter(a => a.archived);
     if (arch.length) h += `<details class="card more"><summary>Comptes archivés (${arch.length}) ${ic('down', 18)}</summary><div>${arch.map(a => `<button class="row-item" data-act="form" data-form="account" data-id="${esc(a.id)}"><span class="grow t">${esc(a.name)}</span>${ic('r', 18)}</button>`).join('')}</div></details>`;
     return h + '</main>';
@@ -613,7 +614,7 @@ function txForm(type, opts = {}) {
   <fieldset><legend>${type === 'income' ? 'Reçu par' : 'Payé avec'}</legend>${payButtons(acc, pay)}</fieldset>
   <div id="payInfo"></div>
   ${type === 'expense' ? `<label class="toggle" id="splitTog" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="split" ${t?.splits?.length || opts.split ? 'checked' : ''}> <span><b>Détailler le ticket</b> <span class="tiny">· un seul achat, plusieurs articles ou catégories (supermarché…)</span></span></label><div id="splitBox" style="display:flex;flex-direction:column;gap:8px"></div>
-  ${!t || (!t.splits?.length && !t.recurringId && !t.treatment) ? `<label class="toggle" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="buys" ${opts.buys ? 'checked' : ''}> <span><b>Détailler les achats</b> <span class="tiny">· plusieurs achats payés en une fois (débit mensuel de la carte…)</span></span></label><div id="buyBox" style="display:flex;flex-direction:column;gap:8px"></div>` : ''}` : ''}
+  ${!t || (!t.splits?.length && !t.recurringId && !t.treatment) ? `<label class="toggle" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="buys" ${opts.buys ? 'checked' : ''}> <span><b>Détailler les achats</b> <span class="tiny">· plusieurs achats payés en une fois (débit mensuel de la carte…)</span></span></label><div id="buyBox" style="display:flex;flex-direction:column;gap:8px"></div>` : ''}${!t ? `<label class="toggle" id="nxTog" style="border:1px dashed var(--field);border-radius:12px;padding:0 12px"><input type="checkbox" name="nx"> <span><b>Payé en plusieurs fois</b> <span class="tiny">· 3X, 4X, 10X, 24X… seule la 1re mensualité compte ce mois-ci</span></span></label><div id="nxBox" style="display:flex;flex-direction:column;gap:8px"></div>` : ''}` : ''}
   <div class="grid2">${dateField('date', date, 'date', 'Date')}<label class="f">Compte<select name="account">${accOptions(acc)}</select></label></div>
   <div class="qdates" role="group" aria-label="Date rapide">${[['0', 'Aujourd’hui'], ['1', 'Hier'], ['2', 'Avant-hier']].map(([k, l]) => `<button type="button" class="chip" data-act="qdate" data-d="${k}">${l}</button>`).join('')}</div>
   <details class="more" ${isEdit || opts.open ? 'open' : ''}><summary><span><span id="whenWhere">Note, plus d’options</span></span>${ic('down', 18)}</summary><div>
@@ -657,6 +658,42 @@ function txForm(type, opts = {}) {
     if (!F.splits?.length) F.splits = [{ label: '', category: val('category') || 'Alimentation', subcategory: '', amount: parseAmount(val('amount')) || 0 }, { label: '', category: 'Entretien de la maison', subcategory: '', amount: 0 }];
     const sum = F.splits.reduce((a, l) => a + (l.amount || 0), 0), total = parseAmount(val('amount')) || 0;
     box.innerHTML = F.splits.map((l, i) => `<div class="split-card"><div class="split-line"><select data-change="split-cat" data-i="${i}" aria-label="Catégorie ligne ${i + 1}">${catOptions(l.category, 'expense')}</select><input data-input="split-amt" data-i="${i}" inputmode="decimal" value="${l.amount ? amountInput(l.amount) : ''}" placeholder="0,00" aria-label="Montant ligne ${i + 1}"><button type="button" class="x" data-act="split-del" data-i="${i}" aria-label="Retirer la ligne">${ic('x', 14)}</button></div><input class="split-lbl" data-input="split-lbl" data-i="${i}" value="${esc(l.label && l.label !== l.category ? l.label : '')}" placeholder="${i === 0 && F.autoFirst !== false ? 'Le reste du ticket (calculé seul)' : 'Article, détail (facultatif)'}" aria-label="Détail ligne ${i + 1}"></div>`).join('') + `<div class="head small"><button type="button" class="link" data-act="split-add">+ Ajouter une ligne</button><span class="${sum === total ? 'pos b' : 'neg b'}">${sum === total ? 'Total juste ✓' : 'Reste ' + money(total - sum)}</span></div>`;
+  };
+  const NX_MORE = [10, 12, 18, 24, 36, 48, 60];
+  const nxPlan = () => splitPlan(parseAmount(val('amount')) || 0, F.nx || 4, parseAmount(sf().elements.nxPer?.value || '') || 0, val('date') || today());
+  const updNx = () => {
+    const box = $('#nxList'); if (!box) return; const plan = nxPlan(), n = plan.length, tot = plan.reduce((a, x) => a + x.amount, 0);
+    const row = (x, k) => `<div class="head small" style="padding:6px 0;border-bottom:1px solid var(--line)"><span><b>${k + 1}/${n}</b> · ${dateFR(x.date)}${k === 0 ? ' <span class="tiny">· budget de ' + esc(monthLabel(x.date.slice(0, 7)).toLowerCase()) + '</span>' : ''}</span><span class="b ${x.amount > 0 ? '' : 'neg'}">−${money(x.amount)}</span></div>`;
+    const rows = !parseAmount(val('amount')) && !parseAmount(sf().elements.nxPer?.value || '') ? '<p class="tiny" style="margin:0">Indiquez le prix total en haut.</p>' : n > 5 ? row(plan[0], 0) + row(plan[1], 1) + `<div class="tiny b" style="text-align:center;padding:6px 0;border-bottom:1px solid var(--line)">⋯ ${n - 3} mensualités de ${money(plan[2].amount)}</div>` + row(plan[n - 1], n - 1) : plan.map(row).join('');
+    box.innerHTML = rows + (n ? `<div class="tiny" style="margin-top:6px">${n} paiements · total ${money(tot)}. Les suivants deviennent des échéances automatiques (montants et dates modifiables ensuite dans Échéances).</div>` : '');
+    const sb = sf().closest('#sheet')?.querySelector('[data-act=save]') || document.querySelector('#sheet [data-act=save]'); if (sb && n && plan[0].amount > 0) sb.textContent = 'Enregistrer · ' + money(plan[0].amount) + ' ce mois-ci';
+  };
+  const drawNx = () => {
+    const box = $('#nxBox'); if (!box) return; const on = sf().elements.nx?.checked;
+    ['#splitTog', '#buyBox'].forEach(q => { const el = $(q); if (el) el.style.display = on ? 'none' : ''; });
+    const bt = sf().elements.buys?.closest('label'); if (bt) bt.style.display = on ? 'none' : '';
+    const sb = document.querySelector('#sheet [data-act=save]');
+    if (!on) { box.innerHTML = ''; if (sb) sb.textContent = 'Enregistrer la dépense'; return; }
+    F.nx ||= 4; const big = F.nx > 4;
+    box.innerHTML = `<div class="seg light" role="group" aria-label="Nombre de paiements">${[2, 3, 4].map(k => `<button type="button" data-group="nxn" data-v="${k}" aria-pressed="${F.nx === k}">${k}X</button>`).join('')}<button type="button" data-group="nxn" data-v="more" aria-pressed="${big}">${big ? F.nx + 'X' : 'Plus ›'}</button></div>
+      ${big || F.nxMore ? `<div class="pills">${NX_MORE.map(k => `<button type="button" class="pill" data-group="nxm" data-v="${k}" aria-pressed="${F.nx === k}">${k}X</button>`).join('')}<label class="pill" style="display:inline-flex;align-items:center;gap:4px">Autre <input name="nxOther" inputmode="numeric" style="width:46px;border:0;background:transparent;font:inherit" placeholder="nb" value="${big && !NX_MORE.includes(F.nx) ? F.nx : ''}" aria-label="Autre nombre de paiements"></label></div>` : ''}
+      <label class="f">Mensualité réelle <span class="tiny" style="font-weight:500">· facultatif, si crédit avec intérêts</span><input name="nxPer" inputmode="decimal" placeholder="Calculée : prix ÷ ${F.nx}"></label>
+      <div id="nxList"></div>`;
+    updNx();
+  };
+  const saveNx = () => {
+    const e = sf().elements, plan = nxPlan(), n = plan.length, label = e.label.value.trim();
+    if (n < 2) throw Error('Choisissez le nombre de paiements.');
+    if (!label) throw Error('Indiquez un libellé (où / quoi ?).');
+    if (plan.some(x => !(x.amount > 0))) throw Error('Indiquez le prix total (ou la mensualité).');
+    if (!e.category.value) { const g = guessCategory(label, 'expense'); e.category.value = g?.category || 'Autres'; }
+    const lid = uid(), total = plan.reduce((a, x) => a + x.amount, 0), d0 = plan[0].date, day = Number(d0.slice(8));
+    const first = buildTx({ type: 'expense', account: e.account.value, date: d0, amount: plan[0].amount, label: label + ' 1/' + n, category: e.category.value, subcategory: e.subcategory.value, payment: getPressed('pay'), note: 'Payé en ' + n + 'X · total ' + money(total) + (e.note.value.trim() ? ' · ' + e.note.value.trim() : ''), planned: e.planned.checked });
+    const sc = { id: uid(), label, amount: plan[1].amount, type: 'expense', account: e.account.value, category: e.category.value, subcategory: e.subcategory.value, payment: 'directDebit', day, days: [day], every: 1, start: d0.slice(0, 7), end: plan[n - 1].date.slice(0, 7), skip: [], custom: plan, splitN: n, loanId: lid };
+    first.recurringId = sc.id; first.recurringDate = d0;
+    state.schedules.push(sc); state.transactions.push(first);
+    (state.loans ||= []).push({ id: lid, kind: 'split', name: label, account: e.account.value, schedId: sc.id, total, n, created: today() });
+    save(); closeSheet(); render(); toast('Payé en ' + n + 'X · ' + money(plan[0].amount) + ' ce mois-ci');
   };
   const readBuyDates = () => { const e = sf().elements; (F.buys || []).forEach((b, i) => { if (e['bd' + i]) b.date = e['bd' + i].value; }); };
   const buyStatus = () => { const sum = (F.buys || []).reduce((a, b) => a + (b.amount || 0), 0), total = parseAmount(val('amount')) || 0;
@@ -758,6 +795,7 @@ function txForm(type, opts = {}) {
     save: () => {
       try {
         if (sf().elements.buys?.checked) return saveBuys();
+        if (sf().elements.nx?.checked) return saveNx();
         const e = sf().elements;
         if (!e.category.value) { const g = guessCategory(e.label.value, type); e.category.value = g?.category || 'Autres'; }
         const f = { id: t?.id, type, gross: e.gross && $('#rentBox').style.display !== 'none' ? e.gross.value : '', account: e.account.value, date: e.date.value, amount: e.amount.value, label: e.label.value, category: e.category.value, subcategory: e.subcategory.value, note: e.note.value, payment: getPressed('pay'), planned: e.planned.checked, budgetMonth: e.nextMonth.checked ? addMonths(e.date.value.slice(0, 7), 1) : '' };
@@ -797,7 +835,9 @@ function txForm(type, opts = {}) {
   sheet.inputs = {
     label: () => { if (!t && !F.touchedCat) { const g = guessCategory(val('label'), type, parseAmount(val('amount')) || 0); if (g && g.category !== val('category')) { sf().elements.category.value = g.category; sf().elements.subcategory.value = g.subcategory; $('#guessNote').textContent = g.rule ? '· règle automatique' : g.sameAmount ? '· même libellé et même montant qu’avant' : '· devinée d’après « ' + val('label') + ' »'; drawCats(); } else drawRule(); } else drawRule(); },
     gross: () => drawRent(),
-    amount: () => { drawRent(); if (F.buys) F.amtAuto = !(parseAmount(val('amount')) > 0); updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
+    nxPer: () => updNx(),
+    nxOther: el => { const k = Number(el.value); if (k >= 2 && k <= 120) { F.nx = k; sf().querySelectorAll('[data-group=nxm]').forEach(x => x.setAttribute('aria-pressed', 'false')); updNx(); } },
+    amount: () => { drawRent(); updNx(); if (F.buys) F.amtAuto = !(parseAmount(val('amount')) > 0); updBuySum(); if (F.splits) { if (F.autoFirst !== false) F.splits[0].amount = Math.max(0, (parseAmount(val('amount')) || 0) - F.splits.slice(1).reduce((a, l) => a + (l.amount || 0), 0)); drawSplits(); } },
     'split-lbl': el => { F.splits[Number(el.dataset.i)].label = el.value; },
     'buy-amt': el => { const i = Number(el.dataset.i), b = F.buys[i]; b.amount = parseAmount(el.value) || 0; updBuySum(); tkAutoFill(b, i); tkUpd(i); },
     'tk-amt': el => { const i = Number(el.dataset.i), j = Number(el.dataset.j), b = F.buys[i]; b.tk[j].amount = parseAmount(el.value) || 0; if (j === 0) b.tkAuto = false; else tkAutoFill(b, i); tkUpd(i); },
@@ -813,6 +853,8 @@ function txForm(type, opts = {}) {
     any: el => { if (el.name === 'date') F.dateTouched = true;
       if (/^bd\d+$/.test(el.name || '')) drawBuys();
       if (['account', 'date'].includes(el.name)) { drawPay(); if (F.buys) drawBuys(); }
+      if (el.name === 'nx') { if (el.checked) { if (sf().elements.split) { sf().elements.split.checked = false; drawSplits(); } if (sf().elements.buys) { sf().elements.buys.checked = false; drawBuys(); } } drawNx(); }
+      if (el.name === 'date') updNx();
       if (el.name === 'split') { if (el.checked && sf().elements.buys) { sf().elements.buys.checked = false; drawBuys(); } drawSplits(); }
       if (el.name === 'buys') { if (el.checked) { sf().elements.split.checked = false; drawSplits(); 
         if (isDeferredAcc(accountById(val('account'))) && getPressed('pay') !== 'card') { sf().querySelectorAll('[data-group="pay"]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === 'card'))); drawPay(); } } drawBuys(); } }
@@ -820,7 +862,9 @@ function txForm(type, opts = {}) {
   /* Espèces → compte Espèces (créé si besoin) ; autres moyens de paiement → compte en banque */
   const bankAcc = () => { const d = accountById(state.settings.defaultAccount); return d && !d.archived && d.type !== 'especes' ? d.id : activeAccounts().find(x => x.type !== 'especes')?.id; };
   const cashAcc = () => { let ca = activeAccounts().find(x => x.type === 'especes'); if (!ca) { ca = makeAccount({ name: 'Espèces', type: 'especes', card: 'aucune', opening: '0', start: (val('date') || today()).slice(0, 8) + '01' }); state.accounts.push(ca); save(); toast('Compte « Espèces » créé (porte-monnaie)'); } return ca; };
-  sheet.afterPress = g => { if (g !== 'pay') return; const e = sf().elements, cur = accountById(e.account.value);
+  sheet.afterPress = g => { if (g === 'nxn') { const v = getPressed('nxn'); if (v === 'more') { F.nxMore = true; if (F.nx <= 4) F.nx = 10; } else { F.nxMore = false; F.nx = Number(v); } drawNx(); return; }
+    if (g === 'nxm') { F.nx = Number(getPressed('nxm')); drawNx(); return; }
+    if (g !== 'pay') return; const e = sf().elements, cur = accountById(e.account.value);
     if (getPressed('pay') === 'cash') { if (cur?.type !== 'especes') { const ca = cashAcc(); e.account.innerHTML = accOptions(ca.id); e.account.value = ca.id; } }
     else if (cur?.type === 'especes') { const b = bankAcc(); if (b) e.account.value = b; }
     drawPay(); };
@@ -874,6 +918,96 @@ function bungalowForm() {
   sheet.changes = { any: upd };
   sheet.afterPress = upd;
   upd();
+}
+
+/* ---------- Prêts et crédits ---------- */
+const lbar = p => p == null ? '' : `<span class="lbar" aria-hidden="true"><i style="width:${p}%"></i></span>`;
+function loanSub(l, i) {
+  if (l.closed && !i.done) return 'Solde prévu le ' + dateFR(l.closed).slice(0, 5) + ' · ' + esc(accName(l.account));
+  if (l.closed) return 'Soldé le ' + dateFR(l.closed);
+  if (l.kind === 'split') return (loanSched(l)?.splitN || l.n) + 'X · fin ' + (i.end ? dateFR(i.end) : '?') + (showAccounts() ? ' · ' + esc(accName(l.account)) : '');
+  return (i.n ? i.n + ' mensualité' + (i.n > 1 ? 's' : '') + ' de ' + money(i.monthly) : 'Mensualité à relier') + (i.end ? ' · fin ' + esc(monthLabel(i.end).toLowerCase()) : '');
+}
+function loanRow(l, i) {
+  const right = l.kind === 'split' && i.n ? 'reste ' + i.n + ' × ' + money(i.monthly) : i.done ? 'soldé' : 'restant dû';
+  return `<button class="row-item loan-row" data-act="loan" data-id="${esc(l.id)}"><span class="ico">${ic(l.kind === 'split' ? 'card' : 'bank', 20)}</span><span class="grow"><span class="t" style="display:block">${esc(l.name)}</span><span class="s" style="display:block">${loanSub(l, i)}</span></span><span class="amt ${i.rem ? 'neg' : ''}" style="text-align:right">${money(i.rem)}<span class="tiny" style="display:block;font-weight:500">${right}</span></span>${i.done ? '' : lbar(i.pct)}</button>`;
+}
+function loansHTML() {
+  const L = (state.loans || []).map(l => ({ l, i: loanInfo(l) })), act = L.filter(x => !x.i.done);
+  const loans = act.filter(x => x.l.kind !== 'split'), splits = act.filter(x => x.l.kind === 'split'), ended = L.filter(x => x.i.done);
+  if (!L.length) return '';
+  const sum = a => a.reduce((t, x) => t + x.i.rem, 0); let h = '';
+  if (loans.length) h += `<section class="card list"><div class="head"><h2>Prêts et crédits</h2><span class="b neg">${moneyR(sum(loans))}</span></div>${loans.map(x => loanRow(x.l, x.i)).join('')}</section>`;
+  if (splits.length) h += `<section class="card list"><div class="head"><h2>Achats en plusieurs fois</h2><span class="b neg">${moneyR(sum(splits))}</span></div>${splits.map(x => loanRow(x.l, x.i)).join('')}</section>`;
+  if (act.length) h += `<section class="card head" style="padding:14px 16px"><span class="b">Total des dettes</span><span class="b neg num">${money(sum(act))}</span></section><p class="tiny" style="margin:-4px 0 0;text-align:center">Affiché à part : ne diminue pas vos avoirs. Seules les mensualités payées comptent dans le budget du mois.</p>`;
+  if (ended.length) h += `<details class="card more"><summary>Crédits terminés (${ended.length}) ${ic('down', 18)}</summary><div>${ended.map(x => loanRow(x.l, x.i)).join('')}</div></details>`;
+  return h;
+}
+function loanSheet(l) {
+  const i = loanInfo(l), s = loanSched(l), split = l.kind === 'split';
+  const kv = (k, v) => `<div><div class="tiny">${k}</div><div class="b">${v}</div></div>`;
+  let h = `<section class="card" style="background:var(--bg)"><div class="tiny">${i.done ? 'Soldé' : 'Restant dû · au ' + dateFR(today()).slice(0, 5)}</div><div class="big num neg">${money(i.rem)}</div>${i.done ? '' : lbar(i.pct)}
+    <div class="grid2" style="margin-top:12px">${split ? kv('Prix total', money(l.total)) + kv('Paiements', (s?.splitN || l.n) + 'X') + kv('Dernier paiement', i.end ? dateFR(i.end) : '—') + kv('Paiements restants', i.n)
+      : kv('Montant emprunté', l.borrowed ? money(l.borrowed) : '—') + kv('Mensualité', i.monthly ? money(i.monthly) : '—') + kv('Fin prévue', i.end ? esc(monthLabel(i.end)) : '—') + kv('Mensualités restantes', i.done ? 0 : i.n)}</div>
+    <div class="tiny" style="margin-top:10px">Payé depuis ${esc(accName(l.account))}${s ? ' · échéance « ' + esc(s.label) + ' » ' + esc(daysLabel(s)) : ''}${l.closed ? ' · solde du ' + dateFR(l.closed) + ' : ' + money(l.closeAmount || 0) : ''}</div></section>`;
+  if (split && s?.custom?.length) h += `<section class="card list">${s.custom.map((x, k) => `<div class="row-item" style="cursor:default"><span class="grow"><span class="t" style="display:block">${k + 1}/${s.splitN} · ${dateFR(x.date)}</span><span class="s" style="display:block">${isDone(s, x.date) ? '✓ Payé' : 'À venir'}</span></span><span class="amt">−${money(x.amount)}</span></div>`).join('')}</section>`;
+  else if (s) { const paid = state.transactions.filter(t => t.recurringId === s.id && !isPlanned(t)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4); if (paid.length) h += `<section class="card list"><div class="head"><h2>Dernières mensualités</h2></div>${paid.map(t => txRow(t, true)).join('')}</section>`; }
+  if (!split && !l.closed) h += `<p class="tiny" style="margin:0">Le restant dû baisse à chaque mensualité payée (intérêts compris : c’est une estimation). Corrigez-le avec votre relevé dans « Modifier ».</p>`;
+  const foot = `${l.closed ? '' : `<button class="btn full" data-act="loan-close">Solder ${split ? 'le reste' : 'le crédit'}</button>`}<button class="btn ghost" data-act="loan-edit">${ic('edit', 18)} Modifier</button>`;
+  openSheet(l.name, h, foot, { 'loan-close': () => loanCloseSheet(l), 'loan-edit': () => loanForm(l) });
+}
+function loanCloseSheet(l) {
+  const i = loanInfo(l);
+  const body = `<label style="display:flex;flex-direction:column;align-items:center"><span class="label">Montant du remboursement</span><input name="amount" class="amount-in" inputmode="decimal" value="${amountInput(i.rem)}"></label><p class="tiny" style="margin:-6px 0 0;text-align:center">Proposé : ${l.kind === 'split' ? 'le reste à payer' : 'le capital restant dû'} · modifiable (frais éventuels)</p>
+  <div class="grid2"><label class="f">Payé depuis<select name="account">${accOptions(l.account)}</select></label>${dateField('date', today(), 'date', 'Date')}</div>
+  <div class="kvbox" style="padding:12px 14px;font-size:14px;line-height:1.5"><b>Ce qui se passera :</b><br>✓ Une opération « Solde ${esc(l.name)} » sur le compte choisi (prévue si la date est à venir)<br>✓ ${esc(l.name)} : marqué « Soldé »<br>✓ Les ${l.kind === 'split' ? 'paiements' : 'mensualités'} suivant${l.kind === 'split' ? 's' : 'es'} sont arrêté${l.kind === 'split' ? 's' : 'es'} dans les Échéances</div>
+  <label class="toggle"><input type="checkbox" name="inBudget"> <span>Compter dans les dépenses du mois <span class="tiny">· sinon « Hors budget » : remboursement de dette</span></span></label>`;
+  openSheet('Solder « ' + l.name + ' »', body, `<button class="btn full" data-act="save">Solder</button>`, {
+    save: () => { try {
+      const e = sf().elements, amount = parseAmount(e.amount.value);
+      if (!amount || amount <= 0) throw Error('Indiquez le montant du remboursement.');
+      const t = closeLoan(l, { amount, date: e.date.value || today(), account: e.account.value, inBudget: e.inBudget.checked });
+      save(); closeSheet(); render(); toast(l.name + ' soldé' + (isPlanned(t) ? ' · prévu le ' + dateFR(t.date).slice(0, 5) : ''));
+    } catch (err) { alert(err.message); } }
+  });
+}
+function loanForm(l) {
+  const isEdit = !!l, split = l?.kind === 'split', s = l ? loanSched(l) : null, i = l ? loanInfo(l) : null;
+  const free = state.schedules.filter(x => x.type === 'expense' && !x.custom?.length && !(state.loans || []).some(y => y.schedId === x.id && y !== l)).sort((a, b) => (b.category === 'Crédits') - (a.category === 'Crédits'));
+  let body = `<label class="f">Nom<input name="name" value="${esc(l?.name || '')}" placeholder="Ex. Prêt bancaire, Crédit voiture, Prêt travaux"></label>`;
+  if (!split) {
+    body += `<label class="f">Payé depuis<select name="account">${accOptions(l?.account || formAcc())}</select></label>
+    <label class="f">Mensualité<select name="sched"><option value="">Nouvelle échéance (je saisis la mensualité)</option>${free.map(x => `<option value="${esc(x.id)}" ${s?.id === x.id ? 'selected' : ''}>Échéance « ${esc(x.label)} » · ${money(x.amount)} ${esc(daysLabel(x))}</option>`).join('')}</select></label>
+    <div class="grid2" id="newSched"><label class="f">Montant de la mensualité<input name="monthly" inputmode="decimal" placeholder="0,00 €" value="${s ? amountInput(s.amount) : ''}"></label><label class="f">Prélevée le<input name="day" inputmode="numeric" placeholder="Ex. 5" value="${s ? schedDays(s)[0] : ''}"></label></div>
+    <label class="f">Capital restant dû aujourd’hui<input name="remaining" inputmode="decimal" placeholder="Voir votre relevé de prêt" value="${i && !l.closed ? amountInput(i.rem) : ''}"></label>
+    <div class="grid2">${dateField('end', l?.end || '', 'month', 'Fin du crédit', true)}<label class="f">Montant emprunté<input name="borrowed" inputmode="decimal" placeholder="Facultatif" value="${l?.borrowed ? amountInput(l.borrowed) : ''}"></label></div>
+    <p class="tiny" style="margin:0">Seule la mensualité compte dans le budget du mois. Le prêt est affiché à part dans Mes comptes et ne diminue pas vos avoirs.</p>`;
+  } else body += `<p class="tiny" style="margin:0">Le nouveau nom s’applique aussi aux paiements à venir. Montants et dates : modifiables dans l’échéance (Échéances › « ${esc(s?.label || l.name)} »).</p>`;
+  const foot = (isEdit ? `<button class="btn danger" data-act="del" aria-label="Supprimer">${ic('trash', 18)}</button>` : '') + `<button class="btn full" data-act="save">${isEdit ? 'Enregistrer' : 'Ajouter le prêt'}</button>`;
+  openSheet(isEdit ? 'Modifier « ' + l.name + ' »' : 'Nouveau prêt ou crédit', body, foot, {
+    save: () => { try {
+      const e = sf().elements, name = e.name.value.trim(); if (!name) throw Error('Indiquez un nom.');
+      if (split) { l.name = name; if (s) s.label = name; save(); closeSheet(); render(); toast('Modifié'); return; }
+      const remaining = parseAmount(e.remaining.value); if (!(remaining >= 0) || e.remaining.value.trim() === '') throw Error('Indiquez le capital restant dû (voir votre relevé de prêt).');
+      let sc = state.schedules.find(x => x.id === e.sched.value);
+      const monthly = parseAmount(e.monthly.value), day = Number(e.day.value), end = e.end.value || '';
+      if (!sc) {
+        if (!monthly || monthly <= 0) throw Error('Indiquez le montant de la mensualité.');
+        if (!(day >= 1 && day <= 31)) throw Error('Indiquez le jour du prélèvement (1 à 31).');
+        const m0 = today().slice(0, 7), start = day >= Number(today().slice(8)) ? m0 : addMonths(m0, 1);
+        sc = { id: uid(), label: name, amount: monthly, type: 'expense', account: e.account.value, category: catByName('Crédits') ? 'Crédits' : 'Autres', subcategory: '', payment: 'directDebit', day, days: [day], every: 1, start, end, skip: [] };
+        state.schedules.push(sc);
+      } else { if (monthly > 0) sc.amount = monthly; sc.account = e.account.value; if (end) sc.end = end; if (isEdit && s === sc) sc.label = name; }
+      if (s && s !== sc) delete s.loanId;
+      sc.loanId = l?.id || uid();
+      const n = l || { id: sc.loanId, kind: 'loan', created: today() };
+      Object.assign(n, { name, account: e.account.value, schedId: sc.id, remaining, refDate: today(), end, borrowed: parseAmount(e.borrowed.value) || 0 });
+      if (!l) (state.loans ||= []).push(n);
+      save(); closeSheet(); render(); toast(isEdit ? 'Prêt modifié' : 'Prêt ajouté dans Mes comptes');
+    } catch (err) { alert(err.message); } },
+    del: () => { if (!confirm('Supprimer le suivi de « ' + l.name + ' » ?\nLes opérations déjà enregistrées et l’échéance sont gardées.')) return; state.loans = state.loans.filter(x => x !== l); if (s) delete s.loanId; save(); closeSheet(); render(); toast('Suivi supprimé'); }
+  });
+  if (!split) { const upd = () => { $('#newSched').style.display = sf().elements.sched.value && !isEdit ? 'none' : ''; }; sheet.changes = { any: upd }; upd(); }
 }
 
 function transferForm() {
@@ -1259,6 +1393,8 @@ function act(name, b) {
     case 'due-open': { const d = dueList(ui.month, ui.acc).find(x => x.key === b.dataset.key); if (d) dueSheet(d); break; }
     case 'due-ok': { const d = dueList(ui.month, ui.acc).find(x => x.key === b.dataset.key); if (!d) break; confirmDue(d, d.amount, d.date <= today() ? d.date : today()); save(); render(); toast('✓ ' + d.label + ' enregistré'); break; }
     case 'sched-list': schedulesList(); break;
+    case 'loan': { const l = (state.loans || []).find(x => x.id === b.dataset.id); if (l) loanSheet(l); break; }
+    case 'loan-new': loanForm(null); break;
     case 'budget': budgetSheet(b.dataset.cat); break;
     case 'export-csv': download(ED.key + '-operations-' + today() + '.csv', exportCSV(), 'text/csv;charset=utf-8'); break;
     case 'export-json': download(ED.key + '-sauvegarde-' + today() + '.json', JSON.stringify(state, null, 1), 'application/json'); break;
